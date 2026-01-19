@@ -18,6 +18,7 @@ import ClientSubmissions from "./pages/admin/ClientSubmissions";
 import ArtisanSubmissions from "./pages/admin/ArtisanSubmissions";
 import Categories from "./pages/admin/Categories";
 import FormBuilder from "./pages/admin/FormBuilder";
+import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/admin/artisans/:status" element={<ArtisanSubmissions />} />
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/forms" element={<FormBuilder />} />
+            <Route path="/admin/settings" element={<Settings />} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
