@@ -9,7 +9,8 @@ import {
   FolderOpen, 
   FileEdit,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -49,6 +50,11 @@ const navItems = [
     title: 'Form Builder',
     href: '/admin/forms',
     icon: FileEdit,
+  },
+  {
+    title: 'Settings',
+    href: '/admin/settings',
+    icon: Settings,
   },
 ];
 

@@ -48,14 +48,8 @@ export function Header() {
             ))}
           </nav>
 
-          {/* Admin Link */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/admin/login">
-              <Button variant="outline" size="sm">
-                Admin Login
-              </Button>
-            </Link>
-          </div>
+          {/* Placeholder for spacing */}
+          <div className="hidden md:flex items-center gap-3" />
 
           {/* Mobile Menu Button */}
           <button
@@ -89,13 +83,6 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                to="/admin/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                Admin Login
-              </Link>
             </nav>
           </div>
         )}
