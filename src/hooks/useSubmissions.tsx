@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ClientSubmission, ArtisanSubmission, SubmissionStatus } from '@/lib/types';
 import { toast } from 'sonner';
+import type { Json } from '@/integrations/supabase/types';
 
 // Client Submissions
 export function useClientSubmissions(status?: SubmissionStatus) {
@@ -154,7 +155,10 @@ export function useSubmitClientForm() {
     }) => {
       const { data: result, error } = await supabase
         .from('client_submissions')
-        .insert({ ...data, status: 'pending' })
+        .insert([{
+          ...data,
+          metadata: data.metadata as Json,
+        }])
         .select()
         .single();
       
@@ -178,7 +182,10 @@ export function useSubmitArtisanForm() {
     }) => {
       const { data: result, error } = await supabase
         .from('artisan_submissions')
-        .insert({ ...data, status: 'pending' })
+        .insert([{
+          ...data,
+          metadata: data.metadata as Json,
+        }])
         .select()
         .single();
       
