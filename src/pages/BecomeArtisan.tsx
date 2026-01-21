@@ -3,8 +3,8 @@ import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
 import { useSubmitArtisanForm } from '@/hooks/useSubmissions';
 import { useFormConfig } from '@/hooks/useFormConfigs';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import { DynamicForm } from '@/components/forms/DynamicForm';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ const BecomeArtisan = () => {
   const { data: categories } = useCategories();
   const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('artisan');
   const submitForm = useSubmitArtisanForm();
+  const { saveAttachments } = useFileUpload();
   
   const [categoryId, setCategoryId] = useState<string>('');
   const [customCategory, setCustomCategory] = useState<string>('');
@@ -34,7 +35,10 @@ const BecomeArtisan = () => {
     }
   };
 
-  const handleSubmit = async (data: Record<string, unknown>) => {
+  const handleSubmit = async (
+    data: Record<string, unknown>,
+    uploadedFiles: { fieldName: string; filePath: string; fileName: string }[]
+  ) => {
     // Check that either category or custom category is provided
     if (!categoryId && !customCategory) {
       toast.error('Please select or enter a skill category');
@@ -54,14 +58,38 @@ const BecomeArtisan = () => {
         category_id: categoryId || undefined,
         custom_category: customCategory || undefined,
         // Store any extra dynamic fields in metadata
-        metadata: Object.fromEntries(
-          Object.entries(data).filter(([key]) => 
-            !['full_name', 'email', 'phone', 'location', 'years_experience'].includes(key)
-          )
-        ),
+        metadata: {
+          ...Object.fromEntries(
+            Object.entries(data).filter(([key]) => 
+              !['full_name', 'email', 'phone', 'location', 'years_experience'].includes(key)
+            )
+          ),
+          // Store file references in metadata as well
+          uploaded_files: uploadedFiles.map(f => ({
+            field: f.fieldName,
+            path: f.filePath,
+            name: f.fileName,
+          })),
+        },
       };
 
-      await submitForm.mutateAsync(submissionData);
+      const result = await submitForm.mutateAsync(submissionData);
+      
+      // Save file attachments to the attachments table
+      if (uploadedFiles.length > 0 && result?.id) {
+        await saveAttachments(
+          result.id,
+          'artisan',
+          uploadedFiles.map(f => ({
+            fieldName: f.fieldName,
+            fileName: f.fileName,
+            filePath: f.filePath,
+            fileType: null,
+            fileSize: 0,
+          }))
+        );
+      }
+      
       setSubmitted(true);
       toast.success('Your registration has been submitted successfully!');
     } catch (error: unknown) {
@@ -193,6 +221,7 @@ const BecomeArtisan = () => {
                     onSubmit={handleSubmit}
                     submitLabel="Submit Registration"
                     isSubmitting={submitForm.isPending}
+                    submissionType="artisan"
                   />
                 </CardContent>
               </Card>

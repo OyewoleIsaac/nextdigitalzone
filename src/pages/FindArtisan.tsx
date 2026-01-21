@@ -4,8 +4,8 @@ import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
 import { useSubmitClientForm } from '@/hooks/useSubmissions';
 import { useFormConfig } from '@/hooks/useFormConfigs';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import { DynamicForm } from '@/components/forms/DynamicForm';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,13 +19,17 @@ const FindArtisan = () => {
   const { data: categories } = useCategories();
   const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('client');
   const submitForm = useSubmitClientForm();
+  const { saveAttachments } = useFileUpload();
   
   const [categoryId, setCategoryId] = useState<string>(() => {
     return categories?.find(c => c.slug === preselectedCategory)?.id || '';
   });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (data: Record<string, unknown>) => {
+  const handleSubmit = async (
+    data: Record<string, unknown>, 
+    uploadedFiles: { fieldName: string; filePath: string; fileName: string }[]
+  ) => {
     try {
       // Map dynamic form data to submission fields
       const submissionData = {
@@ -37,14 +41,38 @@ const FindArtisan = () => {
         service_description: data.service_description as string || undefined,
         category_id: categoryId || undefined,
         // Store any extra dynamic fields in metadata
-        metadata: Object.fromEntries(
-          Object.entries(data).filter(([key]) => 
-            !['full_name', 'email', 'phone', 'address', 'nin', 'service_description'].includes(key)
-          )
-        ),
+        metadata: {
+          ...Object.fromEntries(
+            Object.entries(data).filter(([key]) => 
+              !['full_name', 'email', 'phone', 'address', 'nin', 'service_description'].includes(key)
+            )
+          ),
+          // Store file references in metadata as well
+          uploaded_files: uploadedFiles.map(f => ({
+            field: f.fieldName,
+            path: f.filePath,
+            name: f.fileName,
+          })),
+        },
       };
 
-      await submitForm.mutateAsync(submissionData);
+      const result = await submitForm.mutateAsync(submissionData);
+      
+      // Save file attachments to the attachments table
+      if (uploadedFiles.length > 0 && result?.id) {
+        await saveAttachments(
+          result.id,
+          'client',
+          uploadedFiles.map(f => ({
+            fieldName: f.fieldName,
+            fileName: f.fileName,
+            filePath: f.filePath,
+            fileType: null,
+            fileSize: 0,
+          }))
+        );
+      }
+      
       setSubmitted(true);
       toast.success('Your request has been submitted successfully!');
     } catch (error: unknown) {
@@ -163,6 +191,7 @@ const FindArtisan = () => {
                     onSubmit={handleSubmit}
                     submitLabel="Submit Request"
                     isSubmitting={submitForm.isPending}
+                    submissionType="client"
                   />
                 </CardContent>
               </Card>
