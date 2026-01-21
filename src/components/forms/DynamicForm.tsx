@@ -41,31 +41,37 @@ export function DynamicForm({
     await onSubmit(data);
   };
 
+  // Render without card wrapper when embedded in another card
+  const formContent = (
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+      {fields.map((field) => (
+        <DynamicField
+          key={field.id}
+          field={field}
+          error={errors[field.name]?.message as string | undefined}
+        />
+      ))}
+
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        {submitLabel}
+      </Button>
+    </form>
+  );
+
+  // If no title/description, render without card wrapper (for embedding)
+  if (!title && !description) {
+    return <FormProvider {...methods}>{formContent}</FormProvider>;
+  }
+
   return (
     <FormProvider {...methods}>
       <Card>
-        {(title || description) && (
-          <CardHeader>
-            {title && <CardTitle>{title}</CardTitle>}
-            {description && <CardDescription>{description}</CardDescription>}
-          </CardHeader>
-        )}
-        <CardContent>
-          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-            {fields.map((field) => (
-              <DynamicField
-                key={field.id}
-                field={field}
-                error={errors[field.name]?.message as string | undefined}
-              />
-            ))}
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {submitLabel}
-            </Button>
-          </form>
-        </CardContent>
+        <CardHeader>
+          {title && <CardTitle>{title}</CardTitle>}
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+        <CardContent>{formContent}</CardContent>
       </Card>
     </FormProvider>
   );

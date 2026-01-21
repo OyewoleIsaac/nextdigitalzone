@@ -2,96 +2,66 @@ import { useState } from 'react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
 import { useSubmitArtisanForm } from '@/hooks/useSubmissions';
+import { useFormConfig } from '@/hooks/useFormConfigs';
+import { DynamicForm } from '@/components/forms/DynamicForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { CheckCircle, Hammer, Loader2 } from 'lucide-react';
-import { z } from 'zod';
-
-const artisanFormSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.string().email('Please enter a valid email'),
-  phone: z.string().min(10, 'Please enter a valid phone number').max(15),
-  location: z.string().min(3, 'Please enter your location').max(200),
-  category_id: z.string().optional(),
-  custom_category: z.string().max(100).optional(),
-  years_experience: z.number().min(0, 'Experience cannot be negative').max(50, 'Please enter a valid number'),
-});
+import { CheckCircle, Hammer } from 'lucide-react';
 
 const BecomeArtisan = () => {
   const { data: categories } = useCategories();
+  const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('artisan');
   const submitForm = useSubmitArtisanForm();
   
-  const [formData, setFormData] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    location: '',
-    category_id: '',
-    custom_category: '',
-    years_experience: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [categoryId, setCategoryId] = useState<string>('');
+  const [customCategory, setCustomCategory] = useState<string>('');
   const [showCustomCategory, setShowCustomCategory] = useState(false);
-
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: '' }));
-  };
+  const [submitted, setSubmitted] = useState(false);
 
   const handleCategoryChange = (value: string) => {
     if (value === 'other') {
       setShowCustomCategory(true);
-      setFormData(prev => ({ ...prev, category_id: '' }));
+      setCategoryId('');
     } else {
       setShowCustomCategory(false);
-      setFormData(prev => ({ ...prev, category_id: value, custom_category: '' }));
+      setCategoryId(value);
+      setCustomCategory('');
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    const dataToValidate = {
-      ...formData,
-      years_experience: parseInt(formData.years_experience) || 0,
-    };
-    
-    const result = artisanFormSchema.safeParse(dataToValidate);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach(err => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0] as string] = err.message;
-        }
-      });
-      setErrors(fieldErrors);
-      toast.error('Please fix the form errors');
-      return;
-    }
-
+  const handleSubmit = async (data: Record<string, unknown>) => {
     // Check that either category or custom category is provided
-    if (!formData.category_id && !formData.custom_category) {
-      setErrors(prev => ({ ...prev, category_id: 'Please select or enter a skill category' }));
+    if (!categoryId && !customCategory) {
       toast.error('Please select or enter a skill category');
       return;
     }
 
     try {
-      await submitForm.mutateAsync({
-        full_name: result.data.full_name,
-        email: result.data.email,
-        phone: result.data.phone,
-        location: result.data.location,
-        years_experience: result.data.years_experience,
-        category_id: formData.category_id || undefined,
-        custom_category: formData.custom_category || undefined,
-      });
+      // Map dynamic form data to submission fields
+      const submissionData = {
+        full_name: data.full_name as string || '',
+        email: data.email as string || '',
+        phone: data.phone as string || undefined,
+        location: data.location as string || undefined,
+        years_experience: typeof data.years_experience === 'number' 
+          ? data.years_experience 
+          : parseInt(data.years_experience as string) || 0,
+        category_id: categoryId || undefined,
+        custom_category: customCategory || undefined,
+        // Store any extra dynamic fields in metadata
+        metadata: Object.fromEntries(
+          Object.entries(data).filter(([key]) => 
+            !['full_name', 'email', 'phone', 'location', 'years_experience'].includes(key)
+          )
+        ),
+      };
+
+      await submitForm.mutateAsync(submissionData);
       setSubmitted(true);
       toast.success('Your registration has been submitted successfully!');
     } catch (error: unknown) {
@@ -161,150 +131,72 @@ const BecomeArtisan = () => {
       <section className="py-12">
         <div className="section-container">
           <div className="max-w-2xl mx-auto">
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle>Artisan Registration Form</CardTitle>
-                <CardDescription>
-                  All fields marked with * are required. Your information will be reviewed by our team.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Full Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name *</Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => handleChange('full_name', e.target.value)}
-                      placeholder="Enter your full name"
-                      className={errors.full_name ? 'border-destructive' : ''}
-                    />
-                    {errors.full_name && (
-                      <p className="text-sm text-destructive">{errors.full_name}</p>
-                    )}
-                  </div>
-
-                  {/* Email & Phone */}
-                  <div className="grid md:grid-cols-2 gap-4">
+            {isConfigLoading ? (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-full mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle>Artisan Registration Form</CardTitle>
+                  <CardDescription>
+                    All fields marked with * are required. Your information will be reviewed by our team.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Category Selection (always shown, not part of dynamic form) */}
+                  <div className="space-y-4 mb-6">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleChange('email', e.target.value)}
-                        placeholder="Enter your email"
-                        className={errors.email ? 'border-destructive' : ''}
-                      />
-                      {errors.email && (
-                        <p className="text-sm text-destructive">{errors.email}</p>
-                      )}
+                      <Label htmlFor="category">Skill / Profession *</Label>
+                      <Select onValueChange={handleCategoryChange} value={categoryId || (showCustomCategory ? 'other' : '')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your skill category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories?.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="other">Other (Specify)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number *</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleChange('phone', e.target.value)}
-                        placeholder="Enter your phone number"
-                        className={errors.phone ? 'border-destructive' : ''}
-                      />
-                      {errors.phone && (
-                        <p className="text-sm text-destructive">{errors.phone}</p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Location */}
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location *</Label>
-                    <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => handleChange('location', e.target.value)}
-                      placeholder="e.g., Lagos, Ikeja"
-                      className={errors.location ? 'border-destructive' : ''}
-                    />
-                    {errors.location && (
-                      <p className="text-sm text-destructive">{errors.location}</p>
+                    {showCustomCategory && (
+                      <div className="space-y-2 animate-fade-in">
+                        <Label htmlFor="custom_category">Specify Your Skill *</Label>
+                        <Input
+                          id="custom_category"
+                          value={customCategory}
+                          onChange={(e) => setCustomCategory(e.target.value)}
+                          placeholder="Enter your skill/profession"
+                        />
+                      </div>
                     )}
                   </div>
-
-                  {/* Category */}
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Skill / Profession *</Label>
-                    <Select onValueChange={handleCategoryChange}>
-                      <SelectTrigger className={errors.category_id ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select your skill category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories?.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="other">Other (Specify)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.category_id && (
-                      <p className="text-sm text-destructive">{errors.category_id}</p>
-                    )}
-                  </div>
-
-                  {/* Custom Category */}
-                  {showCustomCategory && (
-                    <div className="space-y-2 animate-fade-in">
-                      <Label htmlFor="custom_category">Specify Your Skill *</Label>
-                      <Input
-                        id="custom_category"
-                        value={formData.custom_category}
-                        onChange={(e) => handleChange('custom_category', e.target.value)}
-                        placeholder="Enter your skill/profession"
-                        className={errors.custom_category ? 'border-destructive' : ''}
-                      />
-                      {errors.custom_category && (
-                        <p className="text-sm text-destructive">{errors.custom_category}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Years of Experience */}
-                  <div className="space-y-2">
-                    <Label htmlFor="years_experience">Years of Experience *</Label>
-                    <Input
-                      id="years_experience"
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={formData.years_experience}
-                      onChange={(e) => handleChange('years_experience', e.target.value)}
-                      placeholder="e.g., 5"
-                      className={errors.years_experience ? 'border-destructive' : ''}
-                    />
-                    {errors.years_experience && (
-                      <p className="text-sm text-destructive">{errors.years_experience}</p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={submitForm.isPending}
-                  >
-                    {submitForm.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Registration'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                  
+                  {/* Dynamic Form Fields */}
+                  <DynamicForm
+                    fields={formConfig?.field_schema || []}
+                    onSubmit={handleSubmit}
+                    submitLabel="Submit Registration"
+                    isSubmitting={submitForm.isPending}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </section>
