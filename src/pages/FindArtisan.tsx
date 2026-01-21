@@ -3,71 +3,48 @@ import { useSearchParams } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
 import { useSubmitClientForm } from '@/hooks/useSubmissions';
+import { useFormConfig } from '@/hooks/useFormConfigs';
+import { DynamicForm } from '@/components/forms/DynamicForm';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { CheckCircle, Loader2, Search, Shield } from 'lucide-react';
-import { z } from 'zod';
-
-const clientFormSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.string().email('Please enter a valid email'),
-  phone: z.string().min(10, 'Please enter a valid phone number').max(15),
-  address: z.string().min(10, 'Please provide your full address').max(500),
-  nin: z.string().length(11, 'NIN must be exactly 11 digits').regex(/^\d+$/, 'NIN must contain only numbers'),
-  service_description: z.string().min(20, 'Please describe the service you need in detail').max(1000),
-  category_id: z.string().optional(),
-});
+import { CheckCircle, Search, Shield } from 'lucide-react';
 
 const FindArtisan = () => {
   const [searchParams] = useSearchParams();
   const preselectedCategory = searchParams.get('category');
   const { data: categories } = useCategories();
+  const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('client');
   const submitForm = useSubmitClientForm();
   
-  const [formData, setFormData] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    address: '',
-    nin: '',
-    service_description: '',
-    category_id: categories?.find(c => c.slug === preselectedCategory)?.id || '',
+  const [categoryId, setCategoryId] = useState<string>(() => {
+    return categories?.find(c => c.slug === preselectedCategory)?.id || '';
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: '' }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    const result = clientFormSchema.safeParse(formData);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach(err => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0] as string] = err.message;
-        }
-      });
-      setErrors(fieldErrors);
-      toast.error('Please fix the form errors');
-      return;
-    }
-
+  const handleSubmit = async (data: Record<string, unknown>) => {
     try {
-      await submitForm.mutateAsync({
-        ...formData,
-        category_id: formData.category_id || undefined,
-      });
+      // Map dynamic form data to submission fields
+      const submissionData = {
+        full_name: data.full_name as string || '',
+        email: data.email as string || '',
+        phone: data.phone as string || undefined,
+        address: data.address as string || undefined,
+        nin: data.nin as string || '',
+        service_description: data.service_description as string || undefined,
+        category_id: categoryId || undefined,
+        // Store any extra dynamic fields in metadata
+        metadata: Object.fromEntries(
+          Object.entries(data).filter(([key]) => 
+            !['full_name', 'email', 'phone', 'address', 'nin', 'service_description'].includes(key)
+          )
+        ),
+      };
+
+      await submitForm.mutateAsync(submissionData);
       setSubmitted(true);
       toast.success('Your request has been submitted successfully!');
     } catch (error: unknown) {
@@ -136,106 +113,37 @@ const FindArtisan = () => {
       <section className="py-12">
         <div className="section-container">
           <div className="max-w-2xl mx-auto">
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
-                  Client Verification Form
-                </CardTitle>
-                <CardDescription>
-                  All fields marked with * are required. Your information is kept secure and confidential.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Full Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name *</Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => handleChange('full_name', e.target.value)}
-                      placeholder="Enter your full name"
-                      className={errors.full_name ? 'border-destructive' : ''}
-                    />
-                    {errors.full_name && (
-                      <p className="text-sm text-destructive">{errors.full_name}</p>
-                    )}
-                  </div>
-
-                  {/* Email & Phone */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleChange('email', e.target.value)}
-                        placeholder="Enter your email"
-                        className={errors.email ? 'border-destructive' : ''}
-                      />
-                      {errors.email && (
-                        <p className="text-sm text-destructive">{errors.email}</p>
-                      )}
+            {isConfigLoading ? (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-full mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number *</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleChange('phone', e.target.value)}
-                        placeholder="Enter your phone number"
-                        className={errors.phone ? 'border-destructive' : ''}
-                      />
-                      {errors.phone && (
-                        <p className="text-sm text-destructive">{errors.phone}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Residential Address *</Label>
-                    <Textarea
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => handleChange('address', e.target.value)}
-                      placeholder="Enter your full address"
-                      rows={2}
-                      className={errors.address ? 'border-destructive' : ''}
-                    />
-                    {errors.address && (
-                      <p className="text-sm text-destructive">{errors.address}</p>
-                    )}
-                  </div>
-
-                  {/* NIN */}
-                  <div className="space-y-2">
-                    <Label htmlFor="nin">NIN (National Identification Number) *</Label>
-                    <Input
-                      id="nin"
-                      value={formData.nin}
-                      onChange={(e) => handleChange('nin', e.target.value)}
-                      placeholder="Enter your 11-digit NIN"
-                      maxLength={11}
-                      className={errors.nin ? 'border-destructive' : ''}
-                    />
-                    {errors.nin && (
-                      <p className="text-sm text-destructive">{errors.nin}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Your NIN is kept confidential and used only for verification.
-                    </p>
-                  </div>
-
-                  {/* Category */}
-                  <div className="space-y-2">
+                  ))}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Client Verification Form
+                  </CardTitle>
+                  <CardDescription>
+                    All fields marked with * are required. Your information is kept secure and confidential.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Category Selection (always shown, not part of dynamic form) */}
+                  <div className="space-y-2 mb-6">
                     <Label htmlFor="category">Service Category</Label>
-                    <Select
-                      value={formData.category_id}
-                      onValueChange={(value) => handleChange('category_id', value)}
-                    >
+                    <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category (optional)" />
                       </SelectTrigger>
@@ -248,41 +156,17 @@ const FindArtisan = () => {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Service Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="service_description">Service Description *</Label>
-                    <Textarea
-                      id="service_description"
-                      value={formData.service_description}
-                      onChange={(e) => handleChange('service_description', e.target.value)}
-                      placeholder="Describe the service you need in detail..."
-                      rows={4}
-                      className={errors.service_description ? 'border-destructive' : ''}
-                    />
-                    {errors.service_description && (
-                      <p className="text-sm text-destructive">{errors.service_description}</p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={submitForm.isPending}
-                  >
-                    {submitForm.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Request'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                  
+                  {/* Dynamic Form Fields */}
+                  <DynamicForm
+                    fields={formConfig?.field_schema || []}
+                    onSubmit={handleSubmit}
+                    submitLabel="Submit Request"
+                    isSubmitting={submitForm.isPending}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </section>
