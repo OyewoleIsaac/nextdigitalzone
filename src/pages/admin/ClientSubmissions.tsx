@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useClientSubmissions, useUpdateClientSubmission, useDeleteClientSubmission } from '@/hooks/useSubmissions';
+import { NINRevealButton } from '@/components/admin/NINRevealButton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -200,8 +201,12 @@ const ClientSubmissions = () => {
                   <p className="font-medium">{selectedSubmission.phone || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">NIN</p>
-                  <p className="font-medium font-mono">{selectedSubmission.nin}</p>
+                  <p className="text-sm text-muted-foreground">NIN (National ID)</p>
+                  <NINRevealButton
+                    submissionId={selectedSubmission.id}
+                    maskedNin={selectedSubmission.nin}
+                    clientName={selectedSubmission.full_name}
+                  />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Category</p>
