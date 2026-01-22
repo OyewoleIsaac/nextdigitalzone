@@ -1,6 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface ClientSubmissionData {
   full_name: string;
@@ -44,6 +43,7 @@ export function useSubmitClientForm() {
     mutationFn: async (data: {
       formData: ClientSubmissionData;
       attachments?: AttachmentData[];
+      captchaToken?: string;
     }): Promise<SubmitFormResponse> => {
       const { data: result, error } = await supabase.functions.invoke<SubmitFormResponse>(
         'submit-form',
@@ -52,6 +52,7 @@ export function useSubmitClientForm() {
             type: 'client',
             data: data.formData,
             attachments: data.attachments,
+            captchaToken: data.captchaToken,
           },
         }
       );
@@ -74,6 +75,7 @@ export function useSubmitArtisanForm() {
     mutationFn: async (data: {
       formData: ArtisanSubmissionData;
       attachments?: AttachmentData[];
+      captchaToken?: string;
     }): Promise<SubmitFormResponse> => {
       const { data: result, error } = await supabase.functions.invoke<SubmitFormResponse>(
         'submit-form',
@@ -82,6 +84,7 @@ export function useSubmitArtisanForm() {
             type: 'artisan',
             data: data.formData,
             attachments: data.attachments,
+            captchaToken: data.captchaToken,
           },
         }
       );

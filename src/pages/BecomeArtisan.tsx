@@ -4,6 +4,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useSubmitArtisanForm } from '@/hooks/useSecureSubmit';
 import { useFormConfig } from '@/hooks/useFormConfigs';
 import { DynamicForm } from '@/components/forms/DynamicForm';
+import { Captcha } from '@/components/forms/Captcha';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +23,7 @@ const BecomeArtisan = () => {
   const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleCategoryChange = (value: string) => {
     if (value === 'other') {
@@ -34,6 +36,14 @@ const BecomeArtisan = () => {
     }
   };
 
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
+  };
+
   const handleSubmit = async (
     data: Record<string, unknown>,
     uploadedFiles: { fieldName: string; filePath: string; fileName: string }[]
@@ -41,6 +51,11 @@ const BecomeArtisan = () => {
     // Check that either category or custom category is provided
     if (!categoryId && !customCategory) {
       toast.error('Please select or enter a skill category');
+      return;
+    }
+
+    if (!captchaToken) {
+      toast.error('Please complete the CAPTCHA verification');
       return;
     }
 
@@ -80,7 +95,7 @@ const BecomeArtisan = () => {
         file_type: undefined,
       }));
 
-      await submitForm.mutateAsync({ formData, attachments });
+      await submitForm.mutateAsync({ formData, attachments, captchaToken });
       
       setSubmitted(true);
       toast.success('Your registration has been submitted successfully!');
@@ -90,6 +105,9 @@ const BecomeArtisan = () => {
         toast.error('This email has already been registered. Please use a different email.');
       } else if (err.message?.includes('Too many submissions')) {
         toast.error('Too many submissions. Please try again later.');
+      } else if (err.message?.includes('CAPTCHA')) {
+        toast.error('CAPTCHA verification failed. Please try again.');
+        setCaptchaToken(null);
       } else {
         toast.error('Failed to submit your registration. Please try again.');
       }
@@ -230,6 +248,18 @@ const BecomeArtisan = () => {
                     isSubmitting={submitForm.isPending}
                     submissionType="artisan"
                   />
+
+                  {/* CAPTCHA */}
+                  <div className="mt-6 space-y-2">
+                    <Label>Security Verification</Label>
+                    <Captcha
+                      onVerify={handleCaptchaVerify}
+                      onExpire={handleCaptchaExpire}
+                    />
+                    {captchaToken && (
+                      <p className="text-xs text-success text-center">✓ Verification complete</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}

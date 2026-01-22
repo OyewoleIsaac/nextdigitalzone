@@ -12,6 +12,9 @@ const RATE_LIMIT_WINDOW_MINUTES = 60;
 // NIN encryption key - stored securely as env variable
 const ENCRYPTION_KEY = Deno.env.get("NIN_ENCRYPTION_KEY") || "default-key-change-in-production";
 
+// hCaptcha secret key for verification
+const HCAPTCHA_SECRET_KEY = Deno.env.get("HCAPTCHA_SECRET_KEY");
+
 interface ClientSubmissionData {
   full_name: string;
   email: string;
@@ -50,6 +53,33 @@ interface RateLimitRecord {
   window_start: string;
 }
 
+// Verify hCaptcha token
+async function verifyCaptcha(token: string, clientIp: string): Promise<boolean> {
+  if (!HCAPTCHA_SECRET_KEY) {
+    console.warn("[submit-form] HCAPTCHA_SECRET_KEY not configured, skipping captcha verification");
+    return true; // Skip verification if not configured
+  }
+
+  try {
+    const response = await fetch("https://hcaptcha.com/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret: HCAPTCHA_SECRET_KEY,
+        response: token,
+        remoteip: clientIp,
+      }),
+    });
+
+    const result = await response.json();
+    console.log("[submit-form] hCaptcha verification result:", result.success);
+    return result.success === true;
+  } catch (error) {
+    console.error("[submit-form] hCaptcha verification error:", error);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -70,10 +100,11 @@ Deno.serve(async (req) => {
                      "unknown";
 
     const body = await req.json();
-    const { type, data, attachments } = body as {
+    const { type, data, attachments, captchaToken } = body as {
       type: "client" | "artisan";
       data: ClientSubmissionData | ArtisanSubmissionData;
       attachments?: AttachmentData[];
+      captchaToken?: string;
     };
 
     console.log(`[submit-form] Received ${type} submission from IP: ${clientIp}`);
@@ -88,7 +119,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Check rate limit
+    // 2. Verify CAPTCHA token
+    if (captchaToken) {
+      const captchaValid = await verifyCaptcha(captchaToken, clientIp);
+      if (!captchaValid) {
+        console.log(`[submit-form] CAPTCHA verification failed for IP: ${clientIp}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "CAPTCHA verification failed. Please try again.",
+            code: "CAPTCHA_FAILED" 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (HCAPTCHA_SECRET_KEY) {
+      // CAPTCHA is configured but no token provided
+      console.log(`[submit-form] Missing CAPTCHA token from IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Please complete the CAPTCHA verification.",
+          code: "CAPTCHA_REQUIRED" 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 3. Check rate limit
     const rateLimitCheck = await checkRateLimit(supabase, clientIp, type);
     if (!rateLimitCheck.allowed) {
       console.log(`[submit-form] Rate limit exceeded for IP: ${clientIp}`);
@@ -104,7 +160,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Validate required fields
+    // 4. Validate required fields
     if (!data.full_name || !data.email) {
       return new Response(
         JSON.stringify({ error: "Full name and email are required" }),

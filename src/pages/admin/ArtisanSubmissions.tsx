@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useArtisanSubmissions, useUpdateArtisanSubmission, useDeleteArtisanSubmission } from '@/hooks/useSubmissions';
+import { ArtisanSubmissionDialog } from '@/components/admin/ArtisanSubmissionDialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ const ArtisanSubmissions = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   const getTitle = () => {
     switch (statusFilter) {
@@ -65,8 +67,14 @@ const ArtisanSubmissions = () => {
     setSelectedSubmission(null);
   };
 
+  const openDetailsDialog = (submission: ArtisanSubmission) => {
+    setSelectedSubmission(submission);
+    setShowDetailsDialog(true);
+  };
+
   const openRejectDialog = (submission: ArtisanSubmission) => {
     setSelectedSubmission(submission);
+    setShowDetailsDialog(false);
     setShowRejectDialog(true);
   };
 
@@ -137,7 +145,7 @@ const ArtisanSubmissions = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedSubmission(submission)}
+                          onClick={() => openDetailsDialog(submission)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -179,82 +187,17 @@ const ArtisanSubmissions = () => {
         </CardContent>
       </Card>
 
-      {/* View Details Dialog */}
-      <Dialog open={!!selectedSubmission && !showRejectDialog && !showDeleteDialog} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Artisan Submission Details</DialogTitle>
-          </DialogHeader>
-          {selectedSubmission && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Full Name</p>
-                  <p className="font-medium">{selectedSubmission.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{selectedSubmission.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">{selectedSubmission.phone || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Location</p>
-                  <p className="font-medium">{selectedSubmission.location || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Skill Category</p>
-                  <p className="font-medium">{selectedSubmission.category?.name || selectedSubmission.custom_category || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Years of Experience</p>
-                  <p className="font-medium">{selectedSubmission.years_experience ? `${selectedSubmission.years_experience} years` : '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <StatusBadge status={selectedSubmission.status} />
-                </div>
-              </div>
-              {selectedSubmission.rejection_reason && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Rejection Reason</p>
-                  <p className="font-medium text-destructive">{selectedSubmission.rejection_reason}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-muted-foreground">Submitted</p>
-                <p className="font-medium">{format(new Date(selectedSubmission.created_at), 'MMMM d, yyyy h:mm a')}</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            {selectedSubmission?.status === 'pending' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => openRejectDialog(selectedSubmission)}
-                  className="text-destructive"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleApprove(selectedSubmission.id);
-                    setSelectedSubmission(null);
-                  }}
-                  className="bg-success hover:bg-success/90"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* View Details Dialog with File Viewer */}
+      <ArtisanSubmissionDialog
+        submission={selectedSubmission}
+        open={showDetailsDialog}
+        onClose={() => {
+          setShowDetailsDialog(false);
+          setSelectedSubmission(null);
+        }}
+        onApprove={handleApprove}
+        onReject={openRejectDialog}
+      />
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

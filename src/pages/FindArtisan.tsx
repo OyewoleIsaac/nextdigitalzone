@@ -5,6 +5,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useSubmitClientForm } from '@/hooks/useSecureSubmit';
 import { useFormConfig } from '@/hooks/useFormConfigs';
 import { DynamicForm } from '@/components/forms/DynamicForm';
+import { Captcha } from '@/components/forms/Captcha';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,11 +26,25 @@ const FindArtisan = () => {
   });
   const [submitted, setSubmitted] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
+  };
 
   const handleSubmit = async (
     data: Record<string, unknown>, 
     uploadedFiles: { fieldName: string; filePath: string; fileName: string }[]
   ) => {
+    if (!captchaToken) {
+      toast.error('Please complete the CAPTCHA verification');
+      return;
+    }
+
     try {
       // Map dynamic form data to submission fields
       const formData = {
@@ -64,7 +79,7 @@ const FindArtisan = () => {
         file_type: undefined,
       }));
 
-      await submitForm.mutateAsync({ formData, attachments });
+      await submitForm.mutateAsync({ formData, attachments, captchaToken });
       
       setSubmitted(true);
       toast.success('Your request has been submitted successfully!');
@@ -74,6 +89,9 @@ const FindArtisan = () => {
         toast.error('This email has already been used. Please use a different email or wait for your previous request to be processed.');
       } else if (err.message?.includes('Too many submissions')) {
         toast.error('Too many submissions. Please try again later.');
+      } else if (err.message?.includes('CAPTCHA')) {
+        toast.error('CAPTCHA verification failed. Please try again.');
+        setCaptchaToken(null);
       } else {
         toast.error('Failed to submit your request. Please try again.');
       }
@@ -201,6 +219,18 @@ const FindArtisan = () => {
                     isSubmitting={submitForm.isPending}
                     submissionType="client"
                   />
+
+                  {/* CAPTCHA */}
+                  <div className="mt-6 space-y-2">
+                    <Label>Security Verification</Label>
+                    <Captcha
+                      onVerify={handleCaptchaVerify}
+                      onExpire={handleCaptchaExpire}
+                    />
+                    {captchaToken && (
+                      <p className="text-xs text-success text-center">✓ Verification complete</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
