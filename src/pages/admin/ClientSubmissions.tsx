@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useClientSubmissions, useUpdateClientSubmission, useDeleteClientSubmission } from '@/hooks/useSubmissions';
-import { NINRevealButton } from '@/components/admin/NINRevealButton';
+import { ClientSubmissionDialog } from '@/components/admin/ClientSubmissionDialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ClientSubmission, SubmissionStatus } from '@/lib/types';
 import { format } from 'date-fns';
 import { Search, Eye, CheckCircle, XCircle, Trash2, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 
 const ClientSubmissions = () => {
   const { status } = useParams<{ status?: string }>();
@@ -29,6 +28,7 @@ const ClientSubmissions = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   const getTitle = () => {
     switch (statusFilter) {
@@ -67,8 +67,14 @@ const ClientSubmissions = () => {
     setSelectedSubmission(null);
   };
 
+  const openDetailsDialog = (submission: ClientSubmission) => {
+    setSelectedSubmission(submission);
+    setShowDetailsDialog(true);
+  };
+
   const openRejectDialog = (submission: ClientSubmission) => {
     setSelectedSubmission(submission);
+    setShowDetailsDialog(false);
     setShowRejectDialog(true);
   };
 
@@ -137,7 +143,7 @@ const ClientSubmissions = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedSubmission(submission)}
+                          onClick={() => openDetailsDialog(submission)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -179,90 +185,17 @@ const ClientSubmissions = () => {
         </CardContent>
       </Card>
 
-      {/* View Details Dialog */}
-      <Dialog open={!!selectedSubmission && !showRejectDialog && !showDeleteDialog} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Client Submission Details</DialogTitle>
-          </DialogHeader>
-          {selectedSubmission && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Full Name</p>
-                  <p className="font-medium">{selectedSubmission.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{selectedSubmission.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">{selectedSubmission.phone || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">NIN (National ID)</p>
-                  <NINRevealButton
-                    submissionId={selectedSubmission.id}
-                    maskedNin={selectedSubmission.nin}
-                    clientName={selectedSubmission.full_name}
-                  />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Category</p>
-                  <p className="font-medium">{selectedSubmission.category?.name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <StatusBadge status={selectedSubmission.status} />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Address</p>
-                <p className="font-medium">{selectedSubmission.address || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Service Description</p>
-                <p className="font-medium">{selectedSubmission.service_description || '-'}</p>
-              </div>
-              {selectedSubmission.rejection_reason && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Rejection Reason</p>
-                  <p className="font-medium text-destructive">{selectedSubmission.rejection_reason}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-muted-foreground">Submitted</p>
-                <p className="font-medium">{format(new Date(selectedSubmission.created_at), 'MMMM d, yyyy h:mm a')}</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            {selectedSubmission?.status === 'pending' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => openRejectDialog(selectedSubmission)}
-                  className="text-destructive"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleApprove(selectedSubmission.id);
-                    setSelectedSubmission(null);
-                  }}
-                  className="bg-success hover:bg-success/90"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* View Details Dialog with File Viewer */}
+      <ClientSubmissionDialog
+        submission={selectedSubmission}
+        open={showDetailsDialog}
+        onClose={() => {
+          setShowDetailsDialog(false);
+          setSelectedSubmission(null);
+        }}
+        onApprove={handleApprove}
+        onReject={openRejectDialog}
+      />
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
