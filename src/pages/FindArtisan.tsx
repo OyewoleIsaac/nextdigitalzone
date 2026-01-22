@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
-import { useSubmitClientForm } from '@/hooks/useSubmissions';
+import { useSubmitClientForm } from '@/hooks/useSecureSubmit';
 import { useFormConfig } from '@/hooks/useFormConfigs';
-import { useFileUpload } from '@/hooks/useFileUpload';
 import { DynamicForm } from '@/components/forms/DynamicForm';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,12 +19,12 @@ const FindArtisan = () => {
   const { data: categories } = useCategories();
   const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('client');
   const submitForm = useSubmitClientForm();
-  const { saveAttachments } = useFileUpload();
   
   const [categoryId, setCategoryId] = useState<string>(() => {
     return categories?.find(c => c.slug === preselectedCategory)?.id || '';
   });
   const [submitted, setSubmitted] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
 
   const handleSubmit = async (
     data: Record<string, unknown>, 
@@ -32,7 +32,7 @@ const FindArtisan = () => {
   ) => {
     try {
       // Map dynamic form data to submission fields
-      const submissionData = {
+      const formData = {
         full_name: data.full_name as string || '',
         email: data.email as string || '',
         phone: data.phone as string || undefined,
@@ -40,6 +40,7 @@ const FindArtisan = () => {
         nin: data.nin as string || '',
         service_description: data.service_description as string || undefined,
         category_id: categoryId || undefined,
+        honeypot, // Include honeypot for bot detection
         // Store any extra dynamic fields in metadata
         metadata: {
           ...Object.fromEntries(
@@ -56,29 +57,23 @@ const FindArtisan = () => {
         },
       };
 
-      const result = await submitForm.mutateAsync(submissionData);
-      
-      // Save file attachments to the attachments table
-      if (uploadedFiles.length > 0 && result?.id) {
-        await saveAttachments(
-          result.id,
-          'client',
-          uploadedFiles.map(f => ({
-            fieldName: f.fieldName,
-            fileName: f.fileName,
-            filePath: f.filePath,
-            fileType: null,
-            fileSize: 0,
-          }))
-        );
-      }
+      // Prepare attachments for edge function
+      const attachments = uploadedFiles.map(f => ({
+        file_name: f.fileName,
+        file_path: f.filePath,
+        file_type: undefined,
+      }));
+
+      await submitForm.mutateAsync({ formData, attachments });
       
       setSubmitted(true);
       toast.success('Your request has been submitted successfully!');
     } catch (error: unknown) {
       const err = error as Error;
-      if (err.message?.includes('duplicate key')) {
+      if (err.message?.includes('already exists') || err.message?.includes('duplicate')) {
         toast.error('This email has already been used. Please use a different email or wait for your previous request to be processed.');
+      } else if (err.message?.includes('Too many submissions')) {
+        toast.error('Too many submissions. Please try again later.');
       } else {
         toast.error('Failed to submit your request. Please try again.');
       }
@@ -168,6 +163,19 @@ const FindArtisan = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Honeypot field - hidden from real users, bots will fill this */}
+                  <div className="absolute -left-[9999px] opacity-0 pointer-events-none" aria-hidden="true">
+                    <Label htmlFor="website_url">Website URL</Label>
+                    <Input
+                      id="website_url"
+                      name="website_url"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                    />
+                  </div>
+                  
                   {/* Category Selection (always shown, not part of dynamic form) */}
                   <div className="space-y-2 mb-6">
                     <Label htmlFor="category">Service Category</Label>

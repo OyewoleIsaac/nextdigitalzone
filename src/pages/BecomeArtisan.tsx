@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { useCategories } from '@/hooks/useCategories';
-import { useSubmitArtisanForm } from '@/hooks/useSubmissions';
+import { useSubmitArtisanForm } from '@/hooks/useSecureSubmit';
 import { useFormConfig } from '@/hooks/useFormConfigs';
-import { useFileUpload } from '@/hooks/useFileUpload';
 import { DynamicForm } from '@/components/forms/DynamicForm';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,12 +16,12 @@ const BecomeArtisan = () => {
   const { data: categories } = useCategories();
   const { data: formConfig, isLoading: isConfigLoading } = useFormConfig('artisan');
   const submitForm = useSubmitArtisanForm();
-  const { saveAttachments } = useFileUpload();
   
   const [categoryId, setCategoryId] = useState<string>('');
   const [customCategory, setCustomCategory] = useState<string>('');
   const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
 
   const handleCategoryChange = (value: string) => {
     if (value === 'other') {
@@ -47,7 +46,7 @@ const BecomeArtisan = () => {
 
     try {
       // Map dynamic form data to submission fields
-      const submissionData = {
+      const formData = {
         full_name: data.full_name as string || '',
         email: data.email as string || '',
         phone: data.phone as string || undefined,
@@ -57,6 +56,7 @@ const BecomeArtisan = () => {
           : parseInt(data.years_experience as string) || 0,
         category_id: categoryId || undefined,
         custom_category: customCategory || undefined,
+        honeypot, // Include honeypot for bot detection
         // Store any extra dynamic fields in metadata
         metadata: {
           ...Object.fromEntries(
@@ -73,29 +73,23 @@ const BecomeArtisan = () => {
         },
       };
 
-      const result = await submitForm.mutateAsync(submissionData);
-      
-      // Save file attachments to the attachments table
-      if (uploadedFiles.length > 0 && result?.id) {
-        await saveAttachments(
-          result.id,
-          'artisan',
-          uploadedFiles.map(f => ({
-            fieldName: f.fieldName,
-            fileName: f.fileName,
-            filePath: f.filePath,
-            fileType: null,
-            fileSize: 0,
-          }))
-        );
-      }
+      // Prepare attachments for edge function
+      const attachments = uploadedFiles.map(f => ({
+        file_name: f.fileName,
+        file_path: f.filePath,
+        file_type: undefined,
+      }));
+
+      await submitForm.mutateAsync({ formData, attachments });
       
       setSubmitted(true);
       toast.success('Your registration has been submitted successfully!');
     } catch (error: unknown) {
       const err = error as Error;
-      if (err.message?.includes('duplicate key')) {
+      if (err.message?.includes('already exists') || err.message?.includes('duplicate')) {
         toast.error('This email has already been registered. Please use a different email.');
+      } else if (err.message?.includes('Too many submissions')) {
+        toast.error('Too many submissions. Please try again later.');
       } else {
         toast.error('Failed to submit your registration. Please try again.');
       }
@@ -183,6 +177,19 @@ const BecomeArtisan = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Honeypot field - hidden from real users, bots will fill this */}
+                  <div className="absolute -left-[9999px] opacity-0 pointer-events-none" aria-hidden="true">
+                    <Label htmlFor="website_url">Website URL</Label>
+                    <Input
+                      id="website_url"
+                      name="website_url"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={honeypot}
+                      onChange={(e) => setHoneypot(e.target.value)}
+                    />
+                  </div>
+                  
                   {/* Category Selection (always shown, not part of dynamic form) */}
                   <div className="space-y-4 mb-6">
                     <div className="space-y-2">
