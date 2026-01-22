@@ -158,6 +158,7 @@ export type Database = {
           id: string
           metadata: Json | null
           nin: string
+          nin_encrypted: string | null
           phone: string | null
           rejection_reason: string | null
           service_description: string | null
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           nin: string
+          nin_encrypted?: string | null
           phone?: string | null
           rejection_reason?: string | null
           service_description?: string | null
@@ -188,6 +190,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           nin?: string
+          nin_encrypted?: string | null
           phone?: string | null
           rejection_reason?: string | null
           service_description?: string | null
@@ -258,11 +261,43 @@ export type Database = {
         }
         Relationships: []
       }
+      submission_rate_limits: {
+        Row: {
+          attempt_count: number | null
+          endpoint: string
+          id: string
+          ip_address: string
+          window_start: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          endpoint: string
+          id?: string
+          ip_address: string
+          window_start?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          endpoint?: string
+          id?: string
+          ip_address?: string
+          window_start?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      decrypt_nin: {
+        Args: { encrypted_nin: string; encryption_key: string }
+        Returns: string
+      }
+      encrypt_nin: {
+        Args: { encryption_key: string; nin_value: string }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
