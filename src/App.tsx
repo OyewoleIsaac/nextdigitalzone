@@ -10,6 +10,12 @@ import Index from "./pages/Index";
 import FindArtisan from "./pages/FindArtisan";
 import BecomeArtisan from "./pages/BecomeArtisan";
 import NotFound from "./pages/NotFound";
+import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+
+// User Dashboards
+import CustomerDashboard from "./pages/CustomerDashboard";
+import ArtisanDashboard from "./pages/ArtisanDashboard";
 
 // Admin Pages
 import AdminLogin from "./pages/AdminLogin";
@@ -34,6 +40,12 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/find-artisan" element={<FindArtisan />} />
             <Route path="/become-artisan" element={<BecomeArtisan />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
+            
+            {/* User Dashboards */}
+            <Route path="/dashboard" element={<CustomerDashboard />} />
+            <Route path="/artisan/dashboard" element={<ArtisanDashboard />} />
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
