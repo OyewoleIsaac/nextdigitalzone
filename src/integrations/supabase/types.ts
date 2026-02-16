@@ -62,6 +62,74 @@ export type Database = {
         }
         Relationships: []
       }
+      artisan_profiles: {
+        Row: {
+          bio: string | null
+          cancelled_jobs: number
+          category_id: string | null
+          completed_jobs: number
+          created_at: string
+          custom_category: string | null
+          id: string
+          is_available: boolean
+          latitude: number
+          longitude: number
+          paystack_subaccount_code: string | null
+          rating_avg: number
+          service_radius_km: number
+          total_jobs: number
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          bio?: string | null
+          cancelled_jobs?: number
+          category_id?: string | null
+          completed_jobs?: number
+          created_at?: string
+          custom_category?: string | null
+          id?: string
+          is_available?: boolean
+          latitude: number
+          longitude: number
+          paystack_subaccount_code?: string | null
+          rating_avg?: number
+          service_radius_km?: number
+          total_jobs?: number
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          bio?: string | null
+          cancelled_jobs?: number
+          category_id?: string | null
+          completed_jobs?: number
+          created_at?: string
+          custom_category?: string | null
+          id?: string
+          is_available?: boolean
+          latitude?: number
+          longitude?: number
+          paystack_subaccount_code?: string | null
+          rating_avg?: number
+          service_radius_km?: number
+          total_jobs?: number
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artisan_profiles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artisan_submissions: {
         Row: {
           category_id: string | null
@@ -231,6 +299,54 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          is_verified: boolean
+          latitude: number | null
+          longitude: number | null
+          phone: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          is_verified?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          phone: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          is_verified?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          phone?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       submission_attachments: {
         Row: {
           created_at: string
@@ -302,6 +418,7 @@ export type Database = {
     }
     Enums: {
       submission_status: "pending" | "confirmed" | "rejected"
+      user_role: "customer" | "artisan"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -430,6 +547,7 @@ export const Constants = {
   public: {
     Enums: {
       submission_status: ["pending", "confirmed", "rejected"],
+      user_role: ["customer", "artisan"],
     },
   },
 } as const

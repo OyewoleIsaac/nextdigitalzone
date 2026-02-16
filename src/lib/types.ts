@@ -1,4 +1,5 @@
 export type SubmissionStatus = 'pending' | 'confirmed' | 'rejected';
+export type UserRole = 'customer' | 'artisan';
 
 export interface Category {
   id: string;
@@ -80,4 +81,41 @@ export interface AdminLog {
   target_id: string | null;
   details: Record<string, unknown> | null;
   created_at: string;
+}
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  role: UserRole;
+  full_name: string;
+  phone: string;
+  avatar_url: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ArtisanProfile {
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  custom_category: string | null;
+  years_experience: number | null;
+  bio: string | null;
+  latitude: number;
+  longitude: number;
+  service_radius_km: number;
+  is_available: boolean;
+  rating_avg: number;
+  total_jobs: number;
+  completed_jobs: number;
+  cancelled_jobs: number;
+  paystack_subaccount_code: string | null;
+  created_at: string;
+  updated_at: string;
+  category?: Category;
 }
