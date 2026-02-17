@@ -1,15 +1,17 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useClientSubmissions, useArtisanSubmissions } from '@/hooks/useSubmissions';
 import { useAllCategories } from '@/hooks/useCategories';
+import { useAllJobs } from '@/hooks/useJobs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, UserCheck, FolderOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Users, UserCheck, FolderOpen, Clock, CheckCircle, XCircle, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const { data: clientSubmissions, isLoading: clientsLoading } = useClientSubmissions();
   const { data: artisanSubmissions, isLoading: artisansLoading } = useArtisanSubmissions();
   const { data: categories, isLoading: categoriesLoading } = useAllCategories();
+  const { data: allJobs, isLoading: jobsLoading } = useAllJobs();
 
   const clientStats = {
     pending: clientSubmissions?.filter(s => s.status === 'pending').length || 0,
@@ -23,7 +25,10 @@ const Dashboard = () => {
     rejected: artisanSubmissions?.filter(s => s.status === 'rejected').length || 0,
   };
 
-  const isLoading = clientsLoading || artisansLoading || categoriesLoading;
+  const isLoading = clientsLoading || artisansLoading || categoriesLoading || jobsLoading;
+
+  const pendingJobs = allJobs?.filter(j => j.status === 'pending').length || 0;
+  const activeJobsCount = allJobs?.filter(j => !['confirmed', 'cancelled', 'pending'].includes(j.status)).length || 0;
 
   return (
     <AdminLayout title="Dashboard">
@@ -73,6 +78,23 @@ const Dashboard = () => {
               ) : (
                 <div className="text-3xl font-bold">{categories?.length || 0}</div>
               )}
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/jobs">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+              <Briefcase className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <div className="text-3xl font-bold">{activeJobsCount}</div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">{pendingJobs} pending assignment</p>
             </CardContent>
           </Card>
         </Link>

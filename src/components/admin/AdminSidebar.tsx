@@ -10,7 +10,8 @@ import {
   FileEdit,
   LogOut,
   ChevronDown,
-  Settings
+  Settings,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -42,6 +43,16 @@ const navItems = [
     ],
   },
   {
+    title: 'Jobs',
+    icon: Briefcase,
+    children: [
+      { title: 'All Jobs', href: '/admin/jobs' },
+      { title: 'Pending', href: '/admin/jobs/pending' },
+      { title: 'Assigned', href: '/admin/jobs/assigned' },
+      { title: 'Completed', href: '/admin/jobs/completed' },
+    ],
+  },
+  {
     title: 'Categories',
     href: '/admin/categories',
     icon: FolderOpen,
@@ -61,7 +72,7 @@ const navItems = [
 export function AdminSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
-  const [openMenus, setOpenMenus] = useState<string[]>(['Clients', 'Artisans']);
+  const [openMenus, setOpenMenus] = useState<string[]>(['Clients', 'Artisans', 'Jobs']);
 
   const toggleMenu = (title: string) => {
     setOpenMenus(prev => 

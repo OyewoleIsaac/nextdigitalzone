@@ -25,6 +25,8 @@ import ArtisanSubmissions from "./pages/admin/ArtisanSubmissions";
 import Categories from "./pages/admin/Categories";
 import FormBuilder from "./pages/admin/FormBuilder";
 import Settings from "./pages/admin/Settings";
+import AdminJobs from "./pages/admin/Jobs";
+import RequestService from "./pages/RequestService";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,7 @@ const App = () => (
             
             {/* User Dashboards */}
             <Route path="/dashboard" element={<CustomerDashboard />} />
+            <Route path="/request-service" element={<RequestService />} />
             <Route path="/artisan/dashboard" element={<ArtisanDashboard />} />
             
             {/* Admin Routes */}
@@ -56,6 +59,8 @@ const App = () => (
             <Route path="/admin/artisans/:status" element={<ArtisanSubmissions />} />
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/forms" element={<FormBuilder />} />
+            <Route path="/admin/jobs" element={<AdminJobs />} />
+            <Route path="/admin/jobs/:status" element={<AdminJobs />} />
             <Route path="/admin/settings" element={<Settings />} />
             
             {/* Catch-all */}
