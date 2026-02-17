@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.decrypt-nin]
 verify_jwt = false
+
+[functions.find-nearby-artisans]
+verify_jwt = false

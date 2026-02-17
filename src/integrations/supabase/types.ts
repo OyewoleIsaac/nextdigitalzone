@@ -299,6 +299,130 @@ export type Database = {
         }
         Relationships: []
       }
+      job_status_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          job_id: string
+          new_status: Database["public"]["Enums"]["job_status"]
+          notes: string | null
+          old_status: Database["public"]["Enums"]["job_status"] | null
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          job_id: string
+          new_status: Database["public"]["Enums"]["job_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["job_status"] | null
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          new_status?: Database["public"]["Enums"]["job_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["job_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_status_history_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          address: string
+          admin_assigner_id: string | null
+          artisan_id: string | null
+          assigned_by: string | null
+          cancellation_reason: string | null
+          category_id: string | null
+          commission_percent: number
+          created_at: string
+          customer_id: string
+          description: string
+          final_amount: number | null
+          guarantee_expires_at: string | null
+          id: string
+          inspection_fee: number | null
+          latitude: number
+          longitude: number
+          photo_after: string | null
+          photo_before: string | null
+          quoted_amount: number | null
+          requires_inspection: boolean
+          status: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          admin_assigner_id?: string | null
+          artisan_id?: string | null
+          assigned_by?: string | null
+          cancellation_reason?: string | null
+          category_id?: string | null
+          commission_percent?: number
+          created_at?: string
+          customer_id: string
+          description: string
+          final_amount?: number | null
+          guarantee_expires_at?: string | null
+          id?: string
+          inspection_fee?: number | null
+          latitude: number
+          longitude: number
+          photo_after?: string | null
+          photo_before?: string | null
+          quoted_amount?: number | null
+          requires_inspection?: boolean
+          status?: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          admin_assigner_id?: string | null
+          artisan_id?: string | null
+          assigned_by?: string | null
+          cancellation_reason?: string | null
+          category_id?: string | null
+          commission_percent?: number
+          created_at?: string
+          customer_id?: string
+          description?: string
+          final_amount?: number | null
+          guarantee_expires_at?: string | null
+          id?: string
+          inspection_fee?: number | null
+          latitude?: number
+          longitude?: number
+          photo_after?: string | null
+          photo_before?: string | null
+          quoted_amount?: number | null
+          requires_inspection?: boolean
+          status?: Database["public"]["Enums"]["job_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
@@ -417,6 +541,19 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
+      job_status:
+        | "pending"
+        | "assigned"
+        | "quoted"
+        | "inspection_requested"
+        | "inspection_paid"
+        | "price_agreed"
+        | "payment_escrowed"
+        | "in_progress"
+        | "completed"
+        | "confirmed"
+        | "disputed"
+        | "cancelled"
       submission_status: "pending" | "confirmed" | "rejected"
       user_role: "customer" | "artisan"
     }
@@ -546,6 +683,20 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      job_status: [
+        "pending",
+        "assigned",
+        "quoted",
+        "inspection_requested",
+        "inspection_paid",
+        "price_agreed",
+        "payment_escrowed",
+        "in_progress",
+        "completed",
+        "confirmed",
+        "disputed",
+        "cancelled",
+      ],
       submission_status: ["pending", "confirmed", "rejected"],
       user_role: ["customer", "artisan"],
     },
