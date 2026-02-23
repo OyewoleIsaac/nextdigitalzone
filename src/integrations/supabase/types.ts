@@ -423,6 +423,65 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          artisan_amount: number
+          artisan_id: string
+          commission_amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          job_id: string
+          paid_at: string | null
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          paystack_reference: string | null
+          paystack_transfer_code: string | null
+          released_at: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+        }
+        Insert: {
+          amount: number
+          artisan_amount?: number
+          artisan_id: string
+          commission_amount?: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_id: string
+          paid_at?: string | null
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          paystack_reference?: string | null
+          paystack_transfer_code?: string | null
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Update: {
+          amount?: number
+          artisan_amount?: number
+          artisan_id?: string
+          commission_amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_id?: string
+          paid_at?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          paystack_reference?: string | null
+          paystack_transfer_code?: string | null
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
@@ -554,6 +613,8 @@ export type Database = {
         | "confirmed"
         | "disputed"
         | "cancelled"
+      payment_status: "pending" | "paid" | "held" | "released" | "refunded"
+      payment_type: "inspection_fee" | "job_payment"
       submission_status: "pending" | "confirmed" | "rejected"
       user_role: "customer" | "artisan"
     }
@@ -697,6 +758,8 @@ export const Constants = {
         "disputed",
         "cancelled",
       ],
+      payment_status: ["pending", "paid", "held", "released", "refunded"],
+      payment_type: ["inspection_fee", "job_payment"],
       submission_status: ["pending", "confirmed", "rejected"],
       user_role: ["customer", "artisan"],
     },

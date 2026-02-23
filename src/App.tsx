@@ -26,6 +26,7 @@ import Categories from "./pages/admin/Categories";
 import FormBuilder from "./pages/admin/FormBuilder";
 import Settings from "./pages/admin/Settings";
 import AdminJobs from "./pages/admin/Jobs";
+import AdminPayments from "./pages/admin/Payments";
 import RequestService from "./pages/RequestService";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/admin/forms" element={<FormBuilder />} />
             <Route path="/admin/jobs" element={<AdminJobs />} />
             <Route path="/admin/jobs/:status" element={<AdminJobs />} />
+            <Route path="/admin/payments" element={<AdminPayments />} />
             <Route path="/admin/settings" element={<Settings />} />
             
             {/* Catch-all */}
