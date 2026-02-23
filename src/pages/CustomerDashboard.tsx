@@ -1,30 +1,42 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
+import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: jobs, isLoading: jobsLoading } = useCustomerJobs();
   const updateJob = useUpdateJob();
   const addHistory = useAddJobHistory();
+  const initPayment = useInitializePayment();
+  const releasePayment = useReleasePayment();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
   }, [user, authLoading, navigate]);
+
+  // Handle Paystack callback
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      toast.success('Payment successful! The status will update shortly.');
+    }
+  }, [searchParams]);
 
   if (authLoading || profileLoading) {
     return (
@@ -40,16 +52,41 @@ const CustomerDashboard = () => {
   };
 
   const handleConfirmComplete = async (job: Job) => {
-    await updateJob.mutateAsync({ id: job.id, status: 'confirmed' as any });
-    await addHistory.mutateAsync({
-      job_id: job.id,
-      old_status: job.status,
-      new_status: 'confirmed',
-      changed_by: user!.id,
-      notes: 'Customer confirmed job completion',
-    });
-    toast.success('Job confirmed as complete!');
-    setSelectedJob(null);
+    try {
+      await releasePayment.mutateAsync(job.id);
+      setSelectedJob(null);
+    } catch {
+      // error handled by hook
+    }
+  };
+
+  const handlePayInspectionFee = async (job: Job) => {
+    if (!job.inspection_fee) return;
+    try {
+      const result = await initPayment.mutateAsync({
+        job_id: job.id,
+        payment_type: 'inspection_fee',
+        amount: job.inspection_fee,
+      });
+      window.open(result.authorization_url, '_blank');
+    } catch {
+      // error handled by hook
+    }
+  };
+
+  const handlePayForJob = async (job: Job) => {
+    const amount = job.quoted_amount || job.final_amount;
+    if (!amount) return;
+    try {
+      const result = await initPayment.mutateAsync({
+        job_id: job.id,
+        payment_type: 'job_payment',
+        amount,
+      });
+      window.open(result.authorization_url, '_blank');
+    } catch {
+      // error handled by hook
+    }
   };
 
   const activeJobs = jobs?.filter(j => !['confirmed', 'cancelled'].includes(j.status)) || [];
@@ -149,21 +186,24 @@ const CustomerDashboard = () => {
         open={!!selectedJob}
         onOpenChange={(open) => !open && setSelectedJob(null)}
       >
-        {selectedJob?.status === 'completed' && (
+        {/* Payment: Inspection fee */}
+        {selectedJob?.status === 'inspection_requested' && selectedJob.inspection_fee && (
           <div className="pt-4">
             <Button
               className="w-full"
-              onClick={() => handleConfirmComplete(selectedJob)}
-              disabled={updateJob.isPending}
+              onClick={() => handlePayInspectionFee(selectedJob)}
+              disabled={initPayment.isPending}
             >
-              {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Confirm Job Complete
+              {initPayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              Pay Inspection Fee (₦{(selectedJob.inspection_fee / 100).toLocaleString()})
             </Button>
             <p className="text-xs text-muted-foreground mt-1 text-center">
-              This will release payment and activate a 30-day guarantee.
+              Pay for the artisan to visit and assess the job.
             </p>
           </div>
         )}
+
+        {/* Payment: Accept quote & pay */}
         {selectedJob?.status === 'quoted' && (
           <div className="pt-4 space-y-2">
             <Button
@@ -184,6 +224,74 @@ const CustomerDashboard = () => {
             >
               Accept Quote (₦{selectedJob.quoted_amount ? (selectedJob.quoted_amount / 100).toLocaleString() : '0'})
             </Button>
+          </div>
+        )}
+
+        {/* Payment: Pay for job (escrow) */}
+        {selectedJob?.status === 'price_agreed' && (
+          <div className="pt-4">
+            <Button
+              className="w-full"
+              onClick={() => handlePayForJob(selectedJob)}
+              disabled={initPayment.isPending}
+            >
+              {initPayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              Pay ₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()} (Held in Escrow)
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              Your payment is held securely until you confirm the job is complete.
+            </p>
+          </div>
+        )}
+
+        {/* Confirm completion & release payment */}
+        {selectedJob?.status === 'completed' && (
+          <div className="pt-4">
+            <Button
+              className="w-full"
+              onClick={() => handleConfirmComplete(selectedJob)}
+              disabled={releasePayment.isPending}
+            >
+              {releasePayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Confirm Job Complete
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              This will release payment and activate a 30-day guarantee.
+            </p>
+          </div>
+        )}
+
+        {/* Escrow indicator */}
+        {selectedJob?.status === 'payment_escrowed' && (
+          <div className="pt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
+            <CreditCard className="h-5 w-5 mx-auto text-primary mb-1" />
+            <p className="text-sm font-medium">Payment Held in Escrow</p>
+            <p className="text-xs text-muted-foreground">₦{((selectedJob.final_amount || selectedJob.quoted_amount || 0) / 100).toLocaleString()} • Released on confirmation</p>
+          </div>
+        )}
+
+        {/* Payment history for this job */}
+        {jobPayments && jobPayments.length > 0 && (
+          <div className="pt-4">
+            <h4 className="text-sm font-semibold mb-2">Payment History</h4>
+            <div className="space-y-2">
+              {jobPayments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-sm rounded-md border p-2">
+                  <div>
+                    <span className="capitalize">{p.payment_type.replace('_', ' ')}</span>
+                    <span className="text-muted-foreground ml-2">₦{(p.amount / 100).toLocaleString()}</span>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.status === 'released' ? 'bg-green-100 text-green-700' :
+                    p.status === 'held' ? 'bg-yellow-100 text-yellow-700' :
+                    p.status === 'paid' ? 'bg-blue-100 text-blue-700' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {p.status}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </JobDetailDialog>
