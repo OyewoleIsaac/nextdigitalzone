@@ -186,6 +186,33 @@ export type Database = {
           },
         ]
       }
+      artisan_violations: {
+        Row: {
+          artisan_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          reported_by: string
+          violation_type: Database["public"]["Enums"]["violation_type"]
+        }
+        Insert: {
+          artisan_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reported_by: string
+          violation_type: Database["public"]["Enums"]["violation_type"]
+        }
+        Update: {
+          artisan_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reported_by?: string
+          violation_type?: Database["public"]["Enums"]["violation_type"]
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -530,6 +557,44 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          artisan_id: string
+          comment: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          job_id: string
+          rating: number
+        }
+        Insert: {
+          artisan_id: string
+          comment?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_id: string
+          rating: number
+        }
+        Update: {
+          artisan_id?: string
+          comment?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submission_attachments: {
         Row: {
           created_at: string
@@ -617,6 +682,7 @@ export type Database = {
       payment_type: "inspection_fee" | "job_payment"
       submission_status: "pending" | "confirmed" | "rejected"
       user_role: "customer" | "artisan"
+      violation_type: "bypass_attempt" | "no_show" | "poor_quality" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -762,6 +828,7 @@ export const Constants = {
       payment_type: ["inspection_fee", "job_payment"],
       submission_status: ["pending", "confirmed", "rejected"],
       user_role: ["customer", "artisan"],
+      violation_type: ["bypass_attempt", "no_show", "poor_quality", "other"],
     },
   },
 } as const

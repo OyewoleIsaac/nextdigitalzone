@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Settings,
   Briefcase,
-  CreditCard
+  CreditCard,
+  BarChart2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -57,6 +58,11 @@ const navItems = [
     title: 'Payments',
     href: '/admin/payments',
     icon: CreditCard,
+  },
+  {
+    title: 'Performance',
+    href: '/admin/performance',
+    icon: BarChart2,
   },
   {
     title: 'Categories',
