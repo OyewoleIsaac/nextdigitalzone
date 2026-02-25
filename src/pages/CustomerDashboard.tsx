@@ -5,9 +5,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
+import { ReviewDialog } from '@/components/jobs/ReviewDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,7 @@ const CustomerDashboard = () => {
   const initPayment = useInitializePayment();
   const releasePayment = useReleasePayment();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
   useEffect(() => {
@@ -261,6 +263,15 @@ const CustomerDashboard = () => {
           </div>
         )}
 
+        {/* Rate & Review (after confirmed) */}
+        {selectedJob?.status === 'confirmed' && selectedJob.artisan_id && (
+          <div className="pt-4">
+            <Button variant="outline" className="w-full" onClick={() => { setSelectedJob(null); setReviewJob(selectedJob); }}>
+              <Star className="h-4 w-4 mr-2" /> Rate This Job
+            </Button>
+          </div>
+        )}
+
         {/* Escrow indicator */}
         {selectedJob?.status === 'payment_escrowed' && (
           <div className="pt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
@@ -295,6 +306,12 @@ const CustomerDashboard = () => {
           </div>
         )}
       </JobDetailDialog>
+
+      <ReviewDialog
+        job={reviewJob}
+        open={!!reviewJob}
+        onOpenChange={(o) => !o && setReviewJob(null)}
+      />
     </div>
   );
 };
