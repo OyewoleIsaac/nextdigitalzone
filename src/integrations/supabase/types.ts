@@ -302,6 +302,42 @@ export type Database = {
           },
         ]
       }
+      disputes: {
+        Row: {
+          artisan_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          job_id: string
+          reason: string
+          resolution_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          artisan_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_id: string
+          reason: string
+          resolution_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          artisan_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_id?: string
+          reason?: string
+          resolution_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_configs: {
         Row: {
           created_at: string

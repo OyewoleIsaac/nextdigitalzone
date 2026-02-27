@@ -2,8 +2,21 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAllPayments } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, DollarSign, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, DollarSign, TrendingUp, Clock, CheckCircle, Download } from 'lucide-react';
 import { format } from 'date-fns';
+
+function exportCSV(data: any[], filename: string) {
+  if (!data.length) return;
+  const headers = Object.keys(data[0]);
+  const rows = data.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 const AdminPayments = () => {
   const { data: payments, isLoading } = useAllPayments();
@@ -76,10 +89,27 @@ const AdminPayments = () => {
           </Card>
         </div>
 
-        {/* Payments Table */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>All Payments ({payments?.length || 0})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportCSV(
+                (payments || []).map(p => ({
+                  reference: p.paystack_reference || '',
+                  type: p.payment_type,
+                  amount_ngn: (p.amount / 100).toFixed(2),
+                  commission_ngn: (p.commission_amount / 100).toFixed(2),
+                  artisan_amount_ngn: (p.artisan_amount / 100).toFixed(2),
+                  status: p.status,
+                  date: p.paid_at ? format(new Date(p.paid_at), 'yyyy-MM-dd') : format(new Date(p.created_at), 'yyyy-MM-dd'),
+                })),
+                `payments-${format(new Date(), 'yyyy-MM-dd')}.csv`
+              )}
+            >
+              <Download className="h-4 w-4 mr-1" /> Export CSV
+            </Button>
           </CardHeader>
           <CardContent>
             {!payments?.length ? (

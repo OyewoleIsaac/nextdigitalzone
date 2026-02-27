@@ -13,7 +13,8 @@ import {
   Settings,
   Briefcase,
   CreditCard,
-  BarChart2
+  BarChart2,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -63,6 +64,11 @@ const navItems = [
     title: 'Performance',
     href: '/admin/performance',
     icon: BarChart2,
+  },
+  {
+    title: 'Disputes',
+    href: '/admin/disputes',
+    icon: AlertTriangle,
   },
   {
     title: 'Categories',

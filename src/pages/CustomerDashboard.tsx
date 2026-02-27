@@ -5,10 +5,11 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
+import { DisputeDialog } from '@/components/jobs/DisputeDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
 import { Separator } from '@/components/ui/separator';
@@ -27,6 +28,7 @@ const CustomerDashboard = () => {
   const releasePayment = useReleasePayment();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
+  const [disputeJob, setDisputeJob] = useState<Job | null>(null);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
   useEffect(() => {
@@ -265,10 +267,26 @@ const CustomerDashboard = () => {
 
         {/* Rate & Review (after confirmed) */}
         {selectedJob?.status === 'confirmed' && selectedJob.artisan_id && (
-          <div className="pt-4">
+          <div className="pt-4 space-y-2">
             <Button variant="outline" className="w-full" onClick={() => { setSelectedJob(null); setReviewJob(selectedJob); }}>
               <Star className="h-4 w-4 mr-2" /> Rate This Job
             </Button>
+            {/* Guarantee badge */}
+            {selectedJob.guarantee_expires_at && new Date(selectedJob.guarantee_expires_at) > new Date() && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center text-sm">
+                <Shield className="h-4 w-4 mx-auto text-primary mb-1" />
+                <p className="font-medium text-primary">30-Day Guarantee Active</p>
+                <p className="text-xs text-muted-foreground">Expires {new Date(selectedJob.guarantee_expires_at).toLocaleDateString()}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-destructive hover:text-destructive"
+                  onClick={() => { setSelectedJob(null); setDisputeJob(selectedJob); }}
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" /> Open Dispute
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -311,6 +329,11 @@ const CustomerDashboard = () => {
         job={reviewJob}
         open={!!reviewJob}
         onOpenChange={(o) => !o && setReviewJob(null)}
+      />
+      <DisputeDialog
+        job={disputeJob}
+        open={!!disputeJob}
+        onOpenChange={(o) => !o && setDisputeJob(null)}
       />
     </div>
   );
