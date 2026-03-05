@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Hammer, Loader2, User, Wrench, AlertCircle } from 'lucide-react';
-import { LocationPicker } from '@/components/maps/LocationPicker';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Hammer, Loader2, AlertCircle, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { UserRole } from '@/lib/types';
+import { RoleSelect } from '@/components/signup/RoleSelect';
 
 const baseSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -36,13 +36,12 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form fields
+  // Base form fields
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [address, setAddress] = useState('');
-  const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>();
 
   // Artisan-specific
   const [categoryId, setCategoryId] = useState('');
@@ -56,6 +55,12 @@ const Signup = () => {
     }
   }, [user, authLoading, navigate]);
 
+  const handleRoleSelect = (selectedRole: UserRole) => {
+    setRole(selectedRole);
+    setStep('form');
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -63,11 +68,6 @@ const Signup = () => {
     const validation = baseSchema.safeParse({ full_name: fullName, email, phone, password, address });
     if (!validation.success) {
       setError(validation.error.errors[0].message);
-      return;
-    }
-
-    if (role === 'artisan' && !location) {
-      setError('Please set your location on the map');
       return;
     }
 
@@ -83,13 +83,11 @@ const Signup = () => {
 
       if (signUpError) {
         setError(signUpError.message);
-        setIsSubmitting(false);
         return;
       }
 
       if (!authData.user) {
         setError('Signup failed. Please try again.');
-        setIsSubmitting(false);
         return;
       }
 
@@ -100,20 +98,19 @@ const Signup = () => {
         full_name: fullName,
         phone,
         address: address || undefined,
-        latitude: location?.lat,
-        longitude: location?.lng,
       });
 
-      // 3. If artisan, create artisan profile
-      if (role === 'artisan' && location) {
+      // 3. If artisan, create artisan profile (location set later from dashboard)
+      if (role === 'artisan') {
         await createArtisanProfile.mutateAsync({
           user_id: authData.user.id,
-          category_id: categoryId || undefined,
+          category_id: categoryId && categoryId !== 'other' ? categoryId : undefined,
           custom_category: customCategory || undefined,
           years_experience: yearsExperience ? parseInt(yearsExperience) : undefined,
           bio: bio || undefined,
-          latitude: location.lat,
-          longitude: location.lng,
+          // Default to Abuja — artisan updates from dashboard
+          latitude: 9.0579,
+          longitude: 7.4951,
         });
       }
 
@@ -146,44 +143,15 @@ const Signup = () => {
           </div>
           <CardTitle className="text-2xl font-display">Create Account</CardTitle>
           <CardDescription>
-            {step === 'role' ? 'Choose how you want to use NDZ Marketplace' : `Sign up as ${role === 'customer' ? 'a Customer' : 'an Artisan'}`}
+            {step === 'role'
+              ? 'Choose how you want to use NDZ Marketplace'
+              : `Sign up as ${role === 'customer' ? 'a Customer' : 'an Artisan'}`}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           {step === 'role' ? (
-            <div className="space-y-4">
-              <button
-                onClick={() => { setRole('customer'); setStep('form'); }}
-                className="w-full p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left flex items-start gap-4"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                  <User className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">I need a service</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Find skilled artisans near you for plumbing, electrical, carpentry and more.</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => { setRole('artisan'); setStep('form'); }}
-                className="w-full p-6 rounded-xl border-2 border-border hover:border-secondary hover:bg-secondary/5 transition-all text-left flex items-start gap-4"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10 text-secondary shrink-0">
-                  <Wrench className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">I'm an artisan</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Join the marketplace and get connected to customers who need your skills.</p>
-                </div>
-              </button>
-
-              <p className="text-center text-sm text-muted-foreground">
-                Already have an account?{' '}
-                <Link to="/login" className="text-primary hover:underline font-medium">Sign in</Link>
-              </p>
-            </div>
+            <RoleSelect onSelect={handleRoleSelect} />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
@@ -196,27 +164,59 @@ const Signup = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
-                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="John Doe"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234..." required />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+234..."
+                    required
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Your address" />
+                <Input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Your address"
+                />
               </div>
 
               {/* Artisan-specific fields */}
@@ -237,42 +237,55 @@ const Signup = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="experience">Years of Experience</Label>
-                      <Input id="experience" type="number" min="0" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} placeholder="e.g. 5" />
+                      <Input
+                        id="experience"
+                        type="number"
+                        min="0"
+                        value={yearsExperience}
+                        onChange={(e) => setYearsExperience(e.target.value)}
+                        placeholder="e.g. 5"
+                      />
                     </div>
                   </div>
 
                   {categoryId === 'other' && (
                     <div className="space-y-2">
                       <Label htmlFor="customCategory">Specify your service</Label>
-                      <Input id="customCategory" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="e.g. Tiling" />
+                      <Input
+                        id="customCategory"
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                        placeholder="e.g. Tiling"
+                      />
                     </div>
                   )}
 
                   <div className="space-y-2">
                     <Label htmlFor="bio">Short Bio</Label>
-                    <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about your skills and experience..." rows={3} />
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Tell customers about your skills and experience..."
+                      rows={3}
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Your Location <span className="text-destructive">*</span></Label>
-                    <LocationPicker value={location} onChange={setLocation} />
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <span>You can set your exact location and service radius from your dashboard after signing up.</span>
                   </div>
                 </>
               )}
 
-              {role === 'customer' && (
-                <div className="space-y-2">
-                  <Label>Your Location (optional)</Label>
-                  <LocationPicker value={location} onChange={setLocation} />
-                </div>
-              )}
-
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setStep('role')} className="flex-1">
                   Back
                 </Button>
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Create Account'}
+                  {isSubmitting
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+                    : 'Create Account'}
                 </Button>
               </div>
 

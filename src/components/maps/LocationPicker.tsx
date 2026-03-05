@@ -1,31 +1,14 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Button } from '@/components/ui/button';
-import { MapPin, Crosshair } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { MapPin, Crosshair, Loader2 } from 'lucide-react';
 
-// Fix default marker icon
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Dynamically import Leaflet only when needed to avoid SSR/render crashes
+const LeafletMap = lazy(() => import('./LeafletMap'));
 
 interface LocationPickerProps {
   value?: { lat: number; lng: number };
   onChange: (location: { lat: number; lng: number }) => void;
   className?: string;
-}
-
-function MapClickHandler({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onLocationSelect(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
 }
 
 export function LocationPicker({ value, onChange, className }: LocationPickerProps) {
@@ -72,14 +55,16 @@ export function LocationPicker({ value, onChange, className }: LocationPickerPro
         </Button>
       </div>
       <div className="rounded-lg overflow-hidden border border-border h-[250px]">
-        <MapContainer center={[position.lat, position.lng]} zoom={13} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        <Suspense fallback={
+          <div className="h-full w-full flex items-center justify-center bg-muted/30">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        }>
+          <LeafletMap
+            position={position}
+            onLocationSelect={handleLocationSelect}
           />
-          <Marker position={[position.lat, position.lng]} />
-          <MapClickHandler onLocationSelect={handleLocationSelect} />
-        </MapContainer>
+        </Suspense>
       </div>
       {position && (
         <p className="text-xs text-muted-foreground mt-1">
