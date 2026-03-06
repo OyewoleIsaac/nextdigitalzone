@@ -31,8 +31,8 @@ const VerifyAccount = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const requiredDocs = profile?.role === 'artisan'
-    ? ['Government-issued ID (NIN, Passport, Driver's License)', 'Proof of skill / certification (if available)']
-    : ['Government-issued ID (NIN, Passport, Driver's License)'];
+    ? ['Government-issued ID (NIN, Passport, Drivers License)', 'Proof of skill / certification (if available)']
+    : ['Government-issued ID (NIN, Passport, Drivers License)'];
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || !user) return;
