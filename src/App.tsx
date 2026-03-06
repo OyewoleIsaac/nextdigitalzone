@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -34,48 +35,50 @@ import RequestService from "./pages/RequestService";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/find-artisan" element={<FindArtisan />} />
-            <Route path="/become-artisan" element={<BecomeArtisan />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login />} />
-            
-            {/* User Dashboards */}
-            <Route path="/dashboard" element={<CustomerDashboard />} />
-            <Route path="/request-service" element={<RequestService />} />
-            <Route path="/artisan/dashboard" element={<ArtisanDashboard />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<Dashboard />} />
-            <Route path="/admin/clients" element={<ClientSubmissions />} />
-            <Route path="/admin/clients/:status" element={<ClientSubmissions />} />
-            <Route path="/admin/artisans" element={<ArtisanSubmissions />} />
-            <Route path="/admin/artisans/:status" element={<ArtisanSubmissions />} />
-            <Route path="/admin/categories" element={<Categories />} />
-            <Route path="/admin/forms" element={<FormBuilder />} />
-            <Route path="/admin/jobs" element={<AdminJobs />} />
-            <Route path="/admin/jobs/:status" element={<AdminJobs />} />
-            <Route path="/admin/payments" element={<AdminPayments />} />
-            <Route path="/admin/performance" element={<ArtisanPerformance />} />
-            <Route path="/admin/disputes" element={<Disputes />} />
-            <Route path="/admin/settings" element={<Settings />} />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/find-artisan" element={<FindArtisan />} />
+              <Route path="/become-artisan" element={<BecomeArtisan />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login />} />
+
+              {/* User Dashboards */}
+              <Route path="/dashboard" element={<CustomerDashboard />} />
+              <Route path="/request-service" element={<RequestService />} />
+              <Route path="/artisan/dashboard" element={<ArtisanDashboard />} />
+
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/clients" element={<ClientSubmissions />} />
+              <Route path="/admin/clients/:status" element={<ClientSubmissions />} />
+              <Route path="/admin/artisans" element={<ArtisanSubmissions />} />
+              <Route path="/admin/artisans/:status" element={<ArtisanSubmissions />} />
+              <Route path="/admin/categories" element={<Categories />} />
+              <Route path="/admin/forms" element={<FormBuilder />} />
+              <Route path="/admin/jobs" element={<AdminJobs />} />
+              <Route path="/admin/jobs/:status" element={<AdminJobs />} />
+              <Route path="/admin/payments" element={<AdminPayments />} />
+              <Route path="/admin/performance" element={<ArtisanPerformance />} />
+              <Route path="/admin/disputes" element={<Disputes />} />
+              <Route path="/admin/settings" element={<Settings />} />
+
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
