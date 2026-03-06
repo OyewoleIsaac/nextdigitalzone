@@ -107,7 +107,7 @@ const VerifyAccount = () => {
         await supabase.from('submission_attachments').insert(attachments);
       }
 
-      toast.success('Documents submitted! Your account is under review. We'll notify you once approved.');
+      toast.success("Documents submitted! Your account is under review. We'll notify you once approved.");
       navigate(profile.role === 'artisan' ? '/artisan/dashboard' : '/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to submit';
