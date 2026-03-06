@@ -87,11 +87,11 @@ const VerifyAccount = () => {
       // Save attachment records tied to the submission
       const submissionTable = profile.role === 'artisan' ? 'artisan_submissions' : 'client_submissions';
 
-      // Find the submission for this user (created during signup via email match)
+      // Find the most recent submission for this user (by email, created during signup)
       const { data: submission } = await supabase
         .from(submissionTable)
         .select('id')
-        .eq('email', profile.full_name ? undefined : user.email)
+        .eq('email', user.email as string)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
