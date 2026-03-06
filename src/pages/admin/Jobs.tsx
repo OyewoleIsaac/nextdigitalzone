@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAllJobs, useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { JobStatusBadge } from '@/components/jobs/JobStatusBadge';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
+import { JobRejectDialog } from '@/components/admin/JobRejectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MapPin, Search, UserPlus, Loader2 } from 'lucide-react';
+import { MapPin, Search, UserPlus, Loader2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Job } from '@/hooks/useJobs';
 
@@ -39,6 +40,7 @@ const AdminJobs = () => {
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [assignDialogJob, setAssignDialogJob] = useState<Job | null>(null);
+  const [rejectDialogJob, setRejectDialogJob] = useState<Job | null>(null);
   const [nearbyArtisans, setNearbyArtisans] = useState<NearbyArtisan[]>([]);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [searchArtisan, setSearchArtisan] = useState('');
@@ -57,7 +59,7 @@ const AdminJobs = () => {
       });
       if (error) throw error;
       setNearbyArtisans(data?.artisans || []);
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to find nearby artisans');
       setNearbyArtisans([]);
     } finally {
@@ -83,6 +85,24 @@ const AdminJobs = () => {
     });
     toast.success('Artisan assigned successfully!');
     setAssignDialogJob(null);
+  };
+
+  const handleRejectJob = async (reason: string) => {
+    if (!rejectDialogJob || !user) return;
+    await updateJob.mutateAsync({
+      id: rejectDialogJob.id,
+      status: 'cancelled' as any,
+      cancellation_reason: reason || 'Cancelled by admin',
+    });
+    await addHistory.mutateAsync({
+      job_id: rejectDialogJob.id,
+      old_status: rejectDialogJob.status,
+      new_status: 'cancelled',
+      changed_by: user.id,
+      notes: reason || 'Cancelled by admin',
+    });
+    toast.success('Job cancelled and customer notified.');
+    setRejectDialogJob(null);
   };
 
   const statusOptions = [
@@ -151,9 +171,19 @@ const AdminJobs = () => {
                       Details
                     </Button>
                     {job.status === 'pending' && (
-                      <Button size="sm" onClick={() => fetchNearbyArtisans(job)}>
-                        <UserPlus className="h-4 w-4 mr-1" /> Assign
-                      </Button>
+                      <>
+                        <Button size="sm" onClick={() => fetchNearbyArtisans(job)}>
+                          <UserPlus className="h-4 w-4 mr-1" /> Assign
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                          onClick={() => setRejectDialogJob(job)}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" /> Cancel
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -168,6 +198,15 @@ const AdminJobs = () => {
         job={selectedJob}
         open={!!selectedJob}
         onOpenChange={(open) => !open && setSelectedJob(null)}
+      />
+
+      {/* Job Reject/Cancel Dialog */}
+      <JobRejectDialog
+        open={!!rejectDialogJob}
+        jobTitle={rejectDialogJob?.title || ''}
+        onClose={() => setRejectDialogJob(null)}
+        onConfirm={handleRejectJob}
+        isPending={updateJob.isPending}
       />
 
       {/* Assign Artisan Dialog */}

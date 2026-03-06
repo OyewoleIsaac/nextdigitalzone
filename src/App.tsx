@@ -13,6 +13,7 @@ import BecomeArtisan from "./pages/BecomeArtisan";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import VerifyAccount from "./pages/VerifyAccount";
 
 // User Dashboards
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/become-artisan" element={<BecomeArtisan />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/verify-account" element={<VerifyAccount />} />
 
               {/* User Dashboards */}
               <Route path="/dashboard" element={<CustomerDashboard />} />

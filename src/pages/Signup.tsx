@@ -9,19 +9,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, Loader2, AlertCircle, MapPin } from 'lucide-react';
+import { Hammer, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { UserRole } from '@/lib/types';
 import { RoleSelect } from '@/components/signup/RoleSelect';
+import { AddressField } from '@/components/signup/AddressField';
 
 const baseSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  address: z.string().optional(),
 });
 
 const Signup = () => {
@@ -42,6 +42,7 @@ const Signup = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [address, setAddress] = useState('');
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | undefined>();
 
   // Artisan-specific
   const [categoryId, setCategoryId] = useState('');
@@ -61,11 +62,16 @@ const Signup = () => {
     setError('');
   };
 
+  const handleAddressChange = (addr: string, coords?: { lat: number; lng: number }) => {
+    setAddress(addr);
+    if (coords) setAddressCoords(coords);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const validation = baseSchema.safeParse({ full_name: fullName, email, phone, password, address });
+    const validation = baseSchema.safeParse({ full_name: fullName, email, phone, password });
     if (!validation.success) {
       setError(validation.error.errors[0].message);
       return;
@@ -74,48 +80,68 @@ const Signup = () => {
     setIsSubmitting(true);
 
     try {
-      // 1. Sign up
+      // 1. Sign up with Supabase Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: window.location.origin },
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
-        return;
-      }
+      if (signUpError) { setError(signUpError.message); return; }
+      if (!authData.user) { setError('Signup failed. Please try again.'); return; }
 
-      if (!authData.user) {
-        setError('Signup failed. Please try again.');
-        return;
-      }
+      const userId = authData.user.id;
 
       // 2. Create profile
       await createProfile.mutateAsync({
-        user_id: authData.user.id,
+        user_id: userId,
         role: role!,
         full_name: fullName,
         phone,
         address: address || undefined,
+        latitude: addressCoords?.lat,
+        longitude: addressCoords?.lng,
       });
 
-      // 3. If artisan, create artisan profile (location set later from dashboard)
+      // 3. Create submission record so admin can see & review this user
       if (role === 'artisan') {
+        await supabase.from('artisan_submissions').insert({
+          full_name: fullName,
+          email,
+          phone,
+          location: address || null,
+          category_id: categoryId && categoryId !== 'other' ? categoryId : null,
+          custom_category: customCategory || null,
+          years_experience: yearsExperience ? parseInt(yearsExperience) : null,
+          status: 'pending',
+          metadata: { user_id: userId, bio: bio || null },
+        });
+
+        // 4. Create artisan profile
         await createArtisanProfile.mutateAsync({
-          user_id: authData.user.id,
+          user_id: userId,
           category_id: categoryId && categoryId !== 'other' ? categoryId : undefined,
           custom_category: customCategory || undefined,
           years_experience: yearsExperience ? parseInt(yearsExperience) : undefined,
           bio: bio || undefined,
-          // Default to Abuja — artisan updates from dashboard
-          latitude: 9.0579,
-          longitude: 7.4951,
+          latitude: addressCoords?.lat ?? 9.0579,
+          longitude: addressCoords?.lng ?? 7.4951,
+        });
+      } else {
+        // Customer submission record
+        await supabase.from('client_submissions').insert({
+          full_name: fullName,
+          email,
+          phone,
+          address: address || null,
+          nin: 'PENDING', // Placeholder — admin will see status pending
+          status: 'pending',
+          metadata: { user_id: userId },
         });
       }
 
-      toast.success('Account created! Please check your email to verify your account.');
-      navigate('/login');
+      toast.success('Account created! Please verify your email, then submit your documents.');
+      navigate('/verify-account');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(message);
@@ -209,15 +235,13 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Your address"
-                />
-              </div>
+              {/* Address with geolocation + OSM verification */}
+              <AddressField
+                value={address}
+                onChange={handleAddressChange}
+                label="Your Address"
+                required={role === 'artisan'}
+              />
 
               {/* Artisan-specific fields */}
               {role === 'artisan' && (
@@ -269,11 +293,6 @@ const Signup = () => {
                       placeholder="Tell customers about your skills and experience..."
                       rows={3}
                     />
-                  </div>
-
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>You can set your exact location and service radius from your dashboard after signing up.</span>
                   </div>
                 </>
               )}
