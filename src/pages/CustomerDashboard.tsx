@@ -126,8 +126,17 @@ const CustomerDashboard = () => {
               </div>
               <span className="font-display text-xl font-bold">NDZ<span className="text-primary">Marketplace</span></span>
             </Link>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:block">Hi, {profile?.full_name}</span>
+              {walletBalance > 0 && (
+                <button
+                  onClick={() => setShowWallet(!showWallet)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  ₦{(walletBalance / 100).toLocaleString()} credit
+                </button>
+              )}
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-1" /> Profile
               </Button>
