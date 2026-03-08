@@ -193,6 +193,38 @@ const CustomerDashboard = () => {
         open={!!selectedJob}
         onOpenChange={(open) => !open && setSelectedJob(null)}
       >
+        {/* 24hr refund dispute for pending jobs with no artisan */}
+        {selectedJob?.status === 'pending' && (() => {
+          const hoursAgo = (Date.now() - new Date(selectedJob.created_at).getTime()) / 3600000;
+          return hoursAgo >= 24 ? (
+            <div className="pt-4 rounded-lg border border-warning/30 bg-warning/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-warning" />
+                <p className="text-sm font-medium text-warning">No artisan has responded in 24+ hours</p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                You're eligible for a full refund. Open a dispute and we'll process your booking fee refund.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-warning/50 text-warning hover:bg-warning/10"
+                onClick={() => { setSelectedJob(null); setDisputeJob(selectedJob); }}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                Request Refund (Open Dispute)
+              </Button>
+            </div>
+          ) : (
+            <div className="pt-4 rounded-lg border border-border bg-muted/20 p-3 text-center">
+              <Clock className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+              <p className="text-xs text-muted-foreground">
+                Waiting for an artisan to respond. If no response after 24hrs, you can request a refund here.
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Payment: Inspection fee */}
         {selectedJob?.status === 'inspection_requested' && selectedJob.inspection_fee && (
           <div className="pt-4">
