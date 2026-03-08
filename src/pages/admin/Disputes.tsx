@@ -162,8 +162,8 @@ export default function DisputesPage() {
 
               {/* Context note based on selection */}
               {refundType === 'wallet_credit' && (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">
-                  <Wallet className="h-4 w-4 shrink-0" />
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-accent/10 border border-accent/20 text-xs text-accent-foreground">
+                  <Wallet className="h-4 w-4 shrink-0 text-primary" />
                   <span>₦5,000 will be added to the customer's platform wallet. No Paystack fees — admin retains the full amount from the original transaction.</span>
                 </div>
               )}
