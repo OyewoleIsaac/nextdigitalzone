@@ -109,6 +109,9 @@ const CustomerDashboard = () => {
             </Link>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:block">Hi, {profile?.full_name}</span>
+              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
+                <User className="h-4 w-4 mr-1" /> Profile
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-1" /> Sign Out
               </Button>
