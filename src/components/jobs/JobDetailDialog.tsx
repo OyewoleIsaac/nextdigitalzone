@@ -23,7 +23,6 @@ export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetail
   const workmanshipCost = (job as any).workmanship_cost as number | null;
   const hasBreakdown = !!(materialCost || workmanshipCost);
 
-  // Resolve photo URLs — stored as full signed URLs or storage paths
   const photoBefore = job.photo_before;
   const photoAfter = job.photo_after;
 
