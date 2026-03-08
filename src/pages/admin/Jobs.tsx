@@ -392,9 +392,9 @@ const AdminJobs = () => {
                 <p className="text-muted-foreground mt-1">Workmanship to release: ₦{((selectedJob as any).workmanship_cost / 100).toLocaleString()}</p>
               )}
             </div>
-            <Button className="w-full" onClick={() => handleReleaseWorkmanship(selectedJob)} disabled={updateJob.isPending}>
+            <Button className="w-full" onClick={() => openReleaseDialog(selectedJob)} disabled={updateJob.isPending}>
               {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wrench className="h-4 w-4 mr-2" />}
-              Confirm Workmanship % Released to Artisan
+              Release Workmanship Payment
             </Button>
           </div>
         )}
