@@ -26,7 +26,7 @@ const CustomerDashboard = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: jobs, isLoading: jobsLoading } = useCustomerJobs();
+  const { data: jobs, isLoading: jobsLoading } = useCustomerJobsEnriched();
   const updateJob = useUpdateJob();
   const addHistory = useAddJobHistory();
   const initPayment = useInitializePayment();
