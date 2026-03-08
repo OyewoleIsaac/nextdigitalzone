@@ -458,6 +458,44 @@ const CustomerDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Existing open dispute on this job */}
+        {selectedJobDispute && (
+          <div className="pt-4 border-t">
+            <div className={`rounded-lg p-3 space-y-1 text-sm ${
+              selectedJobDispute.status === 'open' ? 'bg-destructive/5 border border-destructive/20' :
+              selectedJobDispute.status === 'resolved' ? 'bg-green-50 border border-green-200' :
+              'bg-muted border'
+            }`}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={`h-4 w-4 shrink-0 ${selectedJobDispute.status === 'open' ? 'text-destructive' : 'text-muted-foreground'}`} />
+                <p className="font-semibold capitalize">Dispute: {selectedJobDispute.status}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">"{selectedJobDispute.reason}"</p>
+              {selectedJobDispute.preferred_refund_type && (
+                <p className="text-xs">Preference: <span className="font-medium">{selectedJobDispute.preferred_refund_type === 'wallet_credit' ? '💳 Wallet Credit' : '🏦 Cash Refund'}</span></p>
+              )}
+              {selectedJobDispute.resolution_notes && (
+                <p className="text-xs bg-white/50 rounded p-1.5 mt-1">Resolution: {selectedJobDispute.resolution_notes}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* File dispute button inside detail dialog (for active jobs without existing dispute) */}
+        {selectedJob && !selectedJobDispute && ['assigned', 'inspection_paid', 'quoted', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed'].includes(selectedJob.status) && (
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-destructive border-destructive/30 hover:bg-destructive/5"
+              onClick={() => { setSelectedJob(null); setDisputeJob(selectedJob); }}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 mr-1.5" /> File a Dispute for This Job
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-1">Use this if you have a concern about the job or the artisan.</p>
+          </div>
+        )}
       </JobDetailDialog>
 
       <ReviewDialog job={reviewJob} open={!!reviewJob} onOpenChange={(o) => !o && setReviewJob(null)} />

@@ -80,15 +80,18 @@ const AdminJobs = () => {
 
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
-      const withDistance: ArtisanOption[] = artisanData.map((a: any) => ({
-        ...a,
-        profile: profileMap[a.user_id],
-        distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
-        same_category: job.category_id ? a.category_id === job.category_id : false,
-      })).sort((a: any, b: any) => {
-        if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
-        return a.distance_km - b.distance_km;
-      });
+      const withDistance: ArtisanOption[] = artisanData
+        // Only include artisans that have a matching profile (filter ghost artisans)
+        .filter((a: any) => !!profileMap[a.user_id])
+        .map((a: any) => ({
+          ...a,
+          profile: profileMap[a.user_id],
+          distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
+          same_category: job.category_id ? a.category_id === job.category_id : false,
+        })).sort((a: any, b: any) => {
+          if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
+          return a.distance_km - b.distance_km;
+        });
 
       setArtisans(withDistance);
     } catch (err: any) {
