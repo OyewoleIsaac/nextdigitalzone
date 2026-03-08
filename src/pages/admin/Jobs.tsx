@@ -109,6 +109,7 @@ const AdminJobs = () => {
     'all', 'pending', 'assigned', 'quoted', 'inspection_requested',
     'inspection_paid', 'price_agreed', 'payment_escrowed', 'in_progress',
     'completed', 'confirmed', 'disputed', 'cancelled',
+    // Note: 'draft' is intentionally excluded — admin should not see unpaid draft jobs
   ];
 
   const filteredArtisans = nearbyArtisans.filter((a) => {
