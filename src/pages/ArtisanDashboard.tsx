@@ -134,6 +134,9 @@ const ArtisanDashboard = () => {
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-1" /> Profile
               </Button>
+              <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
+                <MessageCircleWarning className="h-4 w-4 mr-1" /> File a Complaint
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-1" /> Sign Out
               </Button>
