@@ -67,6 +67,38 @@ export function useOpenDispute() {
   });
 }
 
+export function useProcessRefund() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      dispute_id: string;
+      refund_type: 'partial' | 'full' | 'none';
+      resolution_notes?: string;
+    }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke('process-refund', {
+        body: payload,
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      const msg = vars.refund_type === 'none'
+        ? 'Dispute closed. No refund issued.'
+        : vars.refund_type === 'full'
+          ? 'Full ₦5,000 refund issued successfully!'
+          : 'Partial ₦4,700 refund issued successfully!';
+      toast.success(msg);
+      qc.invalidateQueries({ queryKey: ['all-disputes'] });
+      qc.invalidateQueries({ queryKey: ['all-jobs'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+    },
+    onError: (err: any) => toast.error(err.message || 'Failed to process refund'),
+  });
+}
+
 export function useResolveDispute() {
   const qc = useQueryClient();
   return useMutation({
