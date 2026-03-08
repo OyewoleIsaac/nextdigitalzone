@@ -75,17 +75,19 @@ export function useInitializePayment() {
       job_id,
       payment_type,
       amount,
+      wallet_credit_applied = 0,
     }: {
       job_id: string;
       payment_type: 'inspection_fee' | 'job_payment';
       amount: number;
+      wallet_credit_applied?: number;
     }) => {
       const { data, error } = await supabase.functions.invoke('initialize-payment', {
-        body: { job_id, payment_type, amount },
+        body: { job_id, payment_type, amount, wallet_credit_applied },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
-      return data as { authorization_url: string; reference: string; access_code: string };
+      return data as { authorization_url: string; reference: string; access_code: string; wallet_credit_applied: number; paystack_amount: number };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });

@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Use getUser() instead of deprecated getClaims()
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -36,10 +35,19 @@ Deno.serve(async (req) => {
     }
     const userId = user.id;
 
-    const { job_id, payment_type, amount } = await req.json();
+    // wallet_credit_applied: amount already deducted from wallet (in kobo). Paystack charge = amount - wallet_credit_applied
+    const { job_id, payment_type, amount, wallet_credit_applied = 0 } = await req.json();
 
     if (!job_id || !payment_type || !amount) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const paystackAmount = amount - wallet_credit_applied;
+    if (paystackAmount <= 0) {
+      return new Response(JSON.stringify({ error: "Nothing to charge via Paystack" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -75,18 +83,18 @@ Deno.serve(async (req) => {
       .single();
 
     const commissionPercent = job.commission_percent || 20;
-    const commissionAmount = Math.round(amount * commissionPercent / 100);
-    const artisanAmount = amount - commissionAmount;
+    const commissionAmount = Math.round(paystackAmount * commissionPercent / 100);
+    const artisanAmount = paystackAmount - commissionAmount;
 
     // For inspection fee payments, artisan_id may not exist yet — use a placeholder
     const artisanId = job.artisan_id || "00000000-0000-0000-0000-000000000000";
 
     const reference = `ndz_${job_id.slice(0, 8)}_${Date.now()}`;
 
-    // Build Paystack payload
+    // Build Paystack payload (only charge remaining balance after wallet deduction)
     const paystackPayload: Record<string, unknown> = {
       email: `${profile?.phone || userId.slice(0, 8)}@ndz.app`,
-      amount, // in kobo
+      amount: paystackAmount,
       reference,
       callback_url: `${req.headers.get("origin") || "https://nextdigitalzone.lovable.app"}/dashboard?payment=success&job_id=${job_id}`,
       metadata: {
@@ -96,6 +104,8 @@ Deno.serve(async (req) => {
         artisan_id: artisanId,
         commission_amount: commissionAmount,
         artisan_amount: artisanAmount,
+        wallet_credit_applied,
+        full_amount: amount,
       },
     };
 
@@ -114,6 +124,41 @@ Deno.serve(async (req) => {
       }
     }
 
+    // If wallet credit was applied, deduct it from profile balance first (service role)
+    const serviceSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    if (wallet_credit_applied > 0) {
+      const { data: profileData } = await serviceSupabase
+        .from("profiles")
+        .select("wallet_balance")
+        .eq("user_id", userId)
+        .single();
+
+      const currentBalance = profileData?.wallet_balance ?? 0;
+      if (currentBalance < wallet_credit_applied) {
+        return new Response(JSON.stringify({ error: "Insufficient wallet balance" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await serviceSupabase
+        .from("profiles")
+        .update({ wallet_balance: currentBalance - wallet_credit_applied })
+        .eq("user_id", userId);
+
+      await serviceSupabase.from("wallet_transactions").insert({
+        user_id: userId,
+        amount: -wallet_credit_applied,
+        type: "debit",
+        description: `Wallet credit applied toward payment for job`,
+        reference: job_id,
+      });
+    }
+
     const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: {
@@ -127,23 +172,30 @@ Deno.serve(async (req) => {
 
     if (!paystackData.status) {
       console.error("Paystack error:", paystackData.message);
+      // Rollback wallet deduction if Paystack init failed
+      if (wallet_credit_applied > 0) {
+        const { data: profileData } = await serviceSupabase
+          .from("profiles")
+          .select("wallet_balance")
+          .eq("user_id", userId)
+          .single();
+        await serviceSupabase
+          .from("profiles")
+          .update({ wallet_balance: (profileData?.wallet_balance ?? 0) + wallet_credit_applied })
+          .eq("user_id", userId);
+      }
       return new Response(JSON.stringify({ error: "Failed to initialize payment", details: paystackData.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Insert/upsert payment record (use service role to avoid RLS issues on insert)
-    const serviceSupabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
+    // Insert payment record for the full amount (wallet + card)
     const { error: insertError } = await serviceSupabase.from("payments").insert({
       job_id,
       customer_id: userId,
       artisan_id: artisanId,
-      amount,
+      amount, // full original amount
       commission_amount: commissionAmount,
       artisan_amount: artisanAmount,
       payment_type,
@@ -160,6 +212,8 @@ Deno.serve(async (req) => {
         authorization_url: paystackData.data.authorization_url,
         reference,
         access_code: paystackData.data.access_code,
+        wallet_credit_applied,
+        paystack_amount: paystackAmount,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
