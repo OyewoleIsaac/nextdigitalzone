@@ -39,21 +39,16 @@ export function useUpdateClientSubmission() {
       
       if (error) throw error;
 
-      // When confirmed, verify the user's profile by email
-      if (status === 'confirmed' && data?.email) {
-        await supabase
-          .from('profiles')
-          .update({ is_verified: true, is_active: true })
-          .eq('user_id', (
-            await supabase
-              .from('profiles')
-              .select('user_id')
-              .eq('full_name', data.full_name)
-              .maybeSingle()
-              .then(r => r.data?.user_id || '')
-          ));
-        // Match by email via auth (best effort - admin has full access)
-        // Also try direct match via the profiles table using full_name + phone combo
+      // When confirmed, verify the user's profile via user_id stored in metadata
+      if (status === 'confirmed' && data?.metadata) {
+        const meta = data.metadata as Record<string, unknown>;
+        const userId = meta?.user_id as string | undefined;
+        if (userId) {
+          await supabase
+            .from('profiles')
+            .update({ is_verified: true, is_active: true })
+            .eq('user_id', userId);
+        }
       }
 
       return data;
