@@ -9,14 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning,
+  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin,
 } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
-import { Separator } from '@/components/ui/separator';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
@@ -31,9 +30,9 @@ const ArtisanDashboard = () => {
   const addHistory = useAddJobHistory();
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [quoteAmount, setQuoteAmount] = useState('');
-  const [requiresInspection, setRequiresInspection] = useState(false);
-  const [inspectionFee, setInspectionFee] = useState('');
+  const [materialCost, setMaterialCost] = useState('');
+  const [workmanshipCost, setWorkmanshipCost] = useState('');
+  const [inspectionNotes, setInspectionNotes] = useState('');
   const [showGeneralDispute, setShowGeneralDispute] = useState(false);
 
   useEffect(() => {
@@ -48,40 +47,51 @@ const ArtisanDashboard = () => {
     );
   }
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
+  const handleSignOut = async () => { await signOut(); navigate('/'); };
 
+  // Artisan submits quote (material + workmanship) after inspection
   const handleSubmitQuote = async () => {
-    if (!selectedJob || !user) return;
-    const updates: any = {
+    if (!selectedJob || !user || !materialCost || !workmanshipCost) return;
+    const matKobo = Math.round(parseFloat(materialCost) * 100);
+    const workKobo = Math.round(parseFloat(workmanshipCost) * 100);
+    const totalKobo = matKobo + workKobo;
+    await updateJob.mutateAsync({
       id: selectedJob.id,
       status: 'quoted',
-      quoted_amount: Math.round(parseFloat(quoteAmount) * 100),
-    };
-    if (requiresInspection && inspectionFee) {
-      updates.requires_inspection = true;
-      updates.inspection_fee = Math.round(parseFloat(inspectionFee) * 100);
-      updates.status = 'inspection_requested';
-    }
-    await updateJob.mutateAsync(updates);
+      material_cost: matKobo,
+      workmanship_cost: workKobo,
+      quoted_amount: totalKobo,
+    } as any);
     await addHistory.mutateAsync({
       job_id: selectedJob.id,
       old_status: selectedJob.status,
-      new_status: updates.status,
+      new_status: 'quoted',
       changed_by: user.id,
-      notes: requiresInspection
-        ? `Inspection requested. Fee: ₦${inspectionFee}. Estimated quote: ₦${quoteAmount}`
-        : `Quote submitted: ₦${quoteAmount}`,
+      notes: `Quote submitted — Materials: ₦${materialCost}, Workmanship: ₦${workmanshipCost}, Total: ₦${(totalKobo / 100).toLocaleString()}`,
     });
-    toast.success(requiresInspection ? 'Inspection request sent!' : 'Quote submitted!');
+    toast.success('Quote submitted to customer!');
     setSelectedJob(null);
-    setQuoteAmount('');
-    setInspectionFee('');
-    setRequiresInspection(false);
+    setMaterialCost('');
+    setWorkmanshipCost('');
   };
 
+  // Artisan marks inspection done (waiting for customer confirmation)
+  const handleInspectionDone = async () => {
+    if (!selectedJob || !user) return;
+    await updateJob.mutateAsync({ id: selectedJob.id, status: 'inspection_paid' as any });
+    await addHistory.mutateAsync({
+      job_id: selectedJob.id,
+      old_status: selectedJob.status,
+      new_status: 'inspection_paid',
+      changed_by: user.id,
+      notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed',
+    });
+    toast.success('Inspection marked done! Waiting for customer confirmation.');
+    setSelectedJob(null);
+    setInspectionNotes('');
+  };
+
+  // Artisan marks job complete
   const handleMarkComplete = async () => {
     if (!selectedJob || !user) return;
     await updateJob.mutateAsync({ id: selectedJob.id, status: 'completed' as any });
@@ -90,9 +100,28 @@ const ArtisanDashboard = () => {
       old_status: selectedJob.status,
       new_status: 'completed',
       changed_by: user.id,
-      notes: 'Artisan marked job as completed',
+      notes: 'Artisan marked job as completed. Awaiting customer confirmation.',
     });
     toast.success('Job marked as completed! Waiting for customer confirmation.');
+    setSelectedJob(null);
+  };
+
+  // Agency job: accept or reject offer
+  const handleOfferResponse = async (accept: boolean) => {
+    if (!selectedJob || !user) return;
+    await updateJob.mutateAsync({
+      id: selectedJob.id,
+      artisan_offer_status: accept ? 'accepted' : 'rejected',
+      ...(accept ? { status: 'assigned' as any } : { status: 'pending' as any, artisan_id: null }),
+    } as any);
+    await addHistory.mutateAsync({
+      job_id: selectedJob.id,
+      old_status: selectedJob.status,
+      new_status: accept ? 'assigned' : 'pending',
+      changed_by: user.id,
+      notes: accept ? 'Artisan accepted the placement offer' : 'Artisan declined the placement offer',
+    });
+    toast.success(accept ? 'Offer accepted! You are now assigned to this job.' : 'Offer declined.');
     setSelectedJob(null);
   };
 
@@ -100,10 +129,7 @@ const ArtisanDashboard = () => {
     if (!selectedJob) return;
     const path = `${selectedJob.id}/${type}-${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from('job-photos').upload(path, file);
-    if (uploadError) {
-      toast.error('Failed to upload photo');
-      return;
-    }
+    if (uploadError) { toast.error('Failed to upload photo'); return; }
     const field = type === 'before' ? 'photo_before' : 'photo_after';
     await updateJob.mutateAsync({ id: selectedJob.id, [field]: path });
     toast.success(`${type === 'before' ? 'Before' : 'After'} photo uploaded!`);
@@ -116,6 +142,13 @@ const ArtisanDashboard = () => {
   const activeJobs = jobs?.filter(j => !['confirmed', 'cancelled'].includes(j.status)) || [];
   const pastJobs = jobs?.filter(j => ['confirmed', 'cancelled'].includes(j.status)) || [];
 
+  // Helper to get customer info from job
+  const getCustomerInfo = (job: Job) => ({
+    name: (job as any).customer_profile?.full_name,
+    phone: (job as any).customer_profile?.phone,
+    address: (job as any).customer_profile?.address,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full glass border-b">
@@ -127,33 +160,29 @@ const ArtisanDashboard = () => {
               </div>
               <span className="font-display text-xl font-bold">NDZ<span className="text-primary">Marketplace</span></span>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Badge variant={profile?.is_verified ? 'default' : 'outline'} className={profile?.is_verified ? 'bg-success text-success-foreground' : ''}>
                 {profile?.is_verified ? <><CheckCircle className="h-3 w-3 mr-1" />Verified</> : 'Pending Verification'}
               </Badge>
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
-                <User className="h-4 w-4 mr-1" /> Profile
-              </Button>
+              <NotificationBell />
+              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}><User className="h-4 w-4 mr-1" /> Profile</Button>
               <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
-                <MessageCircleWarning className="h-4 w-4 mr-1" /> File a Complaint
+                <MessageCircleWarning className="h-4 w-4 mr-1" /> Complaint
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-1" /> Sign Out
-              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
             </div>
           </div>
         </div>
       </header>
 
       <main className="section-container py-8">
-        {/* Verification Banner */}
         {profile && !profile.is_verified && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/40 bg-warning/10 mb-6">
             <Hammer className="h-5 w-5 text-warning shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-warning">Account Pending Verification</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Your profile is under review. The admin will assign jobs to you once your identity is verified (usually 1–2 business days).
+                Your profile is under review. The admin will assign jobs once your identity is verified.
               </p>
             </div>
           </div>
@@ -168,50 +197,30 @@ const ArtisanDashboard = () => {
 
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Jobs</p>
-                  <p className="text-2xl font-bold">{artisanProfile?.total_jobs || 0}</p>
-                </div>
-                <Briefcase className="h-8 w-8 text-primary/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{artisanProfile?.completed_jobs || 0}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-success/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Rating</p>
-                  <p className="text-2xl font-bold">{artisanProfile?.rating_avg || '0.0'}</p>
-                </div>
-                <Star className="h-8 w-8 text-warning/30" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Completion Rate</p>
-                  <p className="text-2xl font-bold">{completionRate}%</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-accent/30" />
-              </div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm text-muted-foreground">Total Jobs</p><p className="text-2xl font-bold">{artisanProfile?.total_jobs || 0}</p></div>
+              <Briefcase className="h-8 w-8 text-primary/30" />
+            </div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm text-muted-foreground">Completed</p><p className="text-2xl font-bold">{artisanProfile?.completed_jobs || 0}</p></div>
+              <CheckCircle className="h-8 w-8 text-success/30" />
+            </div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm text-muted-foreground">Rating</p><p className="text-2xl font-bold">{artisanProfile?.rating_avg || '0.0'}</p></div>
+              <Star className="h-8 w-8 text-warning/30" />
+            </div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm text-muted-foreground">Completion Rate</p><p className="text-2xl font-bold">{completionRate}%</p></div>
+              <TrendingUp className="h-8 w-8 text-accent/30" />
+            </div>
+          </CardContent></Card>
         </div>
 
         {/* Active Jobs */}
@@ -220,16 +229,12 @@ const ArtisanDashboard = () => {
             <Briefcase className="h-5 w-5" /> Assigned Jobs ({activeJobs.length})
           </h2>
           {activeJobs.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No jobs assigned yet. The admin will assign jobs to you based on your location and category.
-              </CardContent>
-            </Card>
+            <Card><CardContent className="py-8 text-center text-muted-foreground">
+              No jobs assigned yet. The admin will assign jobs to you based on your location and category.
+            </CardContent></Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {activeJobs.map((job) => (
-                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />
-              ))}
+              {activeJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />)}
             </div>
           )}
         </div>
@@ -238,48 +243,120 @@ const ArtisanDashboard = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Past Jobs ({pastJobs.length})</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {pastJobs.map((job) => (
-                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />
-              ))}
+              {pastJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />)}
             </div>
           </div>
         )}
       </main>
 
-      {/* Job Detail Dialog with Artisan Actions */}
       <JobDetailDialog
         job={selectedJob}
         open={!!selectedJob}
-        onOpenChange={(open) => { if (!open) { setSelectedJob(null); setQuoteAmount(''); setInspectionFee(''); setRequiresInspection(false); } }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedJob(null); setMaterialCost(''); setWorkmanshipCost(''); setInspectionNotes('');
+          }
+        }}
       >
+        {/* Agency offer: accept/reject */}
+        {selectedJob && (selectedJob as any).artisan_offer_status === 'pending' && (
+          <div className="pt-4 space-y-3 border-t">
+            <h4 className="font-semibold text-sm text-primary">Agency Placement Offer</h4>
+            <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1 text-sm">
+              {(selectedJob as any).agreed_salary && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Agreed Salary</span>
+                  <span className="font-semibold">₦{((selectedJob as any).agreed_salary / 100).toLocaleString()}/month</span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                By accepting, you agree that 30% of your first month's salary will be retained as platform commission.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => handleOfferResponse(true)} disabled={updateJob.isPending}>
+                <CheckCircle className="h-4 w-4 mr-1" /> Accept Offer
+              </Button>
+              <Button variant="outline" className="flex-1 text-destructive border-destructive/30" onClick={() => handleOfferResponse(false)} disabled={updateJob.isPending}>
+                Decline
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Assigned: show customer contact info + option to mark inspection done */}
         {selectedJob?.status === 'assigned' && (
           <div className="pt-4 space-y-4 border-t">
-            <h4 className="font-semibold text-sm">Submit a Quote</h4>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="inspection"
-                checked={requiresInspection}
-                onCheckedChange={(v) => setRequiresInspection(!!v)}
-              />
-              <Label htmlFor="inspection" className="text-sm">Requires physical inspection first</Label>
+            {/* Customer contact info */}
+            <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer Contact</p>
+              {(selectedJob as any).customer_profile?.full_name && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{(selectedJob as any).customer_profile.full_name}</span>
+                </div>
+              )}
+              {(selectedJob as any).customer_profile?.phone && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary">
+                    {(selectedJob as any).customer_profile.phone}
+                  </a>
+                </div>
+              )}
+              <div className="flex items-start gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <span>{selectedJob.address}</span>
+              </div>
             </div>
-            {requiresInspection && (
+
+            {/* Mark inspection done (only if category requires inspection) */}
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Mark Inspection as Done</h4>
+              <Textarea
+                placeholder="Optional inspection notes..."
+                value={inspectionNotes}
+                onChange={(e) => setInspectionNotes(e.target.value)}
+                rows={2}
+              />
+              <Button className="w-full" onClick={handleInspectionDone} disabled={updateJob.isPending}>
+                {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                I Have Completed the Inspection
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">Customer must confirm this before you can submit a quote.</p>
+            </div>
+          </div>
+        )}
+
+        {/* inspection_paid (customer confirmed inspection): submit quote */}
+        {selectedJob?.status === 'inspection_paid' && (
+          <div className="pt-4 space-y-4 border-t">
+            <h4 className="font-semibold text-sm">Submit Quote</h4>
+            <p className="text-xs text-muted-foreground">Customer confirmed your inspection. Submit a detailed quote for the job.</p>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-sm">Inspection Fee (₦)</Label>
-                <Input type="number" placeholder="e.g. 2000" value={inspectionFee} onChange={(e) => setInspectionFee(e.target.value)} />
+                <Label className="text-sm">Material Cost (₦)</Label>
+                <Input type="number" placeholder="e.g. 8000" value={materialCost} onChange={(e) => setMaterialCost(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">Workmanship (₦)</Label>
+                <Input type="number" placeholder="e.g. 5000" value={workmanshipCost} onChange={(e) => setWorkmanshipCost(e.target.value)} />
+              </div>
+            </div>
+            {materialCost && workmanshipCost && (
+              <div className="rounded-lg bg-muted/40 p-3 text-sm font-medium flex justify-between">
+                <span>Total Quote</span>
+                <span className="text-primary">₦{((parseFloat(materialCost) + parseFloat(workmanshipCost)) || 0).toLocaleString()}</span>
               </div>
             )}
-            <div className="space-y-1">
-              <Label className="text-sm">{requiresInspection ? 'Estimated Quote (₦)' : 'Quote Amount (₦)'}</Label>
-              <Input type="number" placeholder="e.g. 15000" value={quoteAmount} onChange={(e) => setQuoteAmount(e.target.value)} />
-            </div>
-            <Button className="w-full" onClick={handleSubmitQuote} disabled={!quoteAmount || updateJob.isPending}>
+            <Button className="w-full" onClick={handleSubmitQuote} disabled={!materialCost || !workmanshipCost || updateJob.isPending}>
               {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              {requiresInspection ? 'Request Inspection' : 'Submit Quote'}
+              Submit Quote to Customer
             </Button>
           </div>
         )}
 
+        {/* In progress / payment escrowed: photos + mark complete */}
         {selectedJob && ['in_progress', 'payment_escrowed'].includes(selectedJob.status) && (
           <div className="pt-4 space-y-3 border-t">
             <h4 className="font-semibold text-sm">Job Documentation</h4>
@@ -299,19 +376,16 @@ const ArtisanDashboard = () => {
                 </label>
               </div>
             </div>
-            <Button className="w-full" variant="default" onClick={handleMarkComplete} disabled={updateJob.isPending}>
-              {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Mark as Completed
+            <Button className="w-full" onClick={handleMarkComplete} disabled={updateJob.isPending}>
+              {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+              Mark Job as Completed
             </Button>
+            <p className="text-xs text-muted-foreground text-center">Customer must confirm completion before funds are released.</p>
           </div>
         )}
       </JobDetailDialog>
 
-      <GeneralDisputeDialog
-        open={showGeneralDispute}
-        onOpenChange={setShowGeneralDispute}
-        userRole="artisan"
-      />
+      <GeneralDisputeDialog open={showGeneralDispute} onOpenChange={setShowGeneralDispute} userRole="artisan" />
     </div>
   );
 };
