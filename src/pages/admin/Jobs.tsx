@@ -194,17 +194,26 @@ const AdminJobs = () => {
   };
 
   const handleReleaseWorkmanship = async (job: Job) => {
-    if (!user) return;
-    await updateJob.mutateAsync({ id: job.id, workmanship_released_at: new Date().toISOString() } as any);
-    await addHistory.mutateAsync({
-      job_id: job.id,
-      old_status: job.status,
-      new_status: job.status,
-      changed_by: user.id,
-      notes: 'Admin confirmed workmanship payment released to artisan',
-    });
-    toast.success('Workmanship payment released!');
-    setSelectedJob(null);
+    if (!user || !releaseDialogJob) return;
+    setConfirmingRelease(true);
+    try {
+      await updateJob.mutateAsync({ id: job.id, workmanship_released_at: new Date().toISOString() } as any);
+      const hasBankDetails = !!(releaseArtisanBank as any)?.account_number;
+      await addHistory.mutateAsync({
+        job_id: job.id,
+        old_status: job.status,
+        new_status: job.status,
+        changed_by: user.id,
+        notes: hasBankDetails
+          ? `Admin confirmed workmanship payment manually transferred to artisan bank account: ${(releaseArtisanBank as any)?.bank_name} (${(releaseArtisanBank as any)?.account_name} · ${(releaseArtisanBank as any)?.account_number})`
+          : 'Admin confirmed workmanship payment released to artisan (no bank account on file)',
+      });
+      toast.success('Workmanship payment marked as released!');
+      setReleaseDialogJob(null);
+      setSelectedJob(null);
+    } finally {
+      setConfirmingRelease(false);
+    }
   };
 
   const statusOptions = [
