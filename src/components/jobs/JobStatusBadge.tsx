@@ -6,15 +6,16 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   pending: { label: 'Pending', className: 'bg-warning/15 text-warning border-warning/30' },
   assigned: { label: 'Assigned', className: 'bg-primary/15 text-primary border-primary/30' },
   quoted: { label: 'Quoted', className: 'bg-primary/15 text-primary border-primary/30' },
-  inspection_requested: { label: 'Inspection Requested', className: 'bg-warning/15 text-warning border-warning/30' },
-  inspection_paid: { label: 'Inspection Paid', className: 'bg-success/15 text-success border-success/30' },
-  price_agreed: { label: 'Price Agreed', className: 'bg-primary/15 text-primary border-primary/30' },
-  payment_escrowed: { label: 'Payment Held', className: 'bg-success/15 text-success border-success/30' },
+  inspection_requested: { label: 'Awaiting Inspection Confirmation', className: 'bg-warning/15 text-warning border-warning/30' },
+  inspection_paid: { label: 'Inspection Confirmed', className: 'bg-success/15 text-success border-success/30' },
+  price_agreed: { label: 'Quote Accepted — Awaiting Payment', className: 'bg-warning/15 text-warning border-warning/30' },
+  payment_escrowed: { label: 'Payment Held in Escrow', className: 'bg-success/15 text-success border-success/30' },
   in_progress: { label: 'In Progress', className: 'bg-primary/15 text-primary border-primary/30' },
-  completed: { label: 'Awaiting Confirmation', className: 'bg-warning/15 text-warning border-warning/30' },
+  completed: { label: 'Awaiting Completion Confirmation', className: 'bg-warning/15 text-warning border-warning/30' },
   confirmed: { label: 'Completion Confirmed', className: 'bg-success/15 text-success border-success/30' },
   disputed: { label: 'Disputed', className: 'bg-destructive/15 text-destructive border-destructive/30' },
   cancelled: { label: 'Cancelled', className: 'bg-muted text-muted-foreground border-muted' },
+  dispute_resolved: { label: 'Dispute Resolved', className: 'bg-muted text-muted-foreground border-muted-foreground/30' },
 };
 
 export function JobStatusBadge({ status }: { status: string }) {

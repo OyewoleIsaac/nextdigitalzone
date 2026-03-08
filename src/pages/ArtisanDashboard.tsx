@@ -77,18 +77,18 @@ const ArtisanDashboard = () => {
     setWorkmanshipCost('');
   };
 
-  // Artisan marks inspection done (waiting for customer confirmation)
+  // Artisan marks inspection done — sets to inspection_requested so customer can confirm
   const handleInspectionDone = async () => {
     if (!selectedJob || !user) return;
-    await updateJob.mutateAsync({ id: selectedJob.id, status: 'inspection_paid' as any });
+    await updateJob.mutateAsync({ id: selectedJob.id, status: 'inspection_requested' as any });
     await addHistory.mutateAsync({
       job_id: selectedJob.id,
       old_status: selectedJob.status,
-      new_status: 'inspection_paid',
+      new_status: 'inspection_requested',
       changed_by: user.id,
-      notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed',
+      notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed — awaiting customer confirmation',
     });
-    toast.success('Inspection marked done! Waiting for customer confirmation.');
+    toast.success('Inspection marked done! Waiting for customer to confirm.');
     setSelectedJob(null);
     setInspectionNotes('');
   };
@@ -332,6 +332,19 @@ const ArtisanDashboard = () => {
                 {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 I Have Completed the Inspection
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* inspection_requested: artisan marked done, waiting for customer confirmation */}
+        {selectedJob?.status === 'inspection_requested' && (
+          <div className="pt-4 space-y-3 border-t">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+              <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-warning">Waiting for Customer Confirmation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">The customer needs to confirm the inspection was carried out before you can submit a quote.</p>
+              </div>
             </div>
           </div>
         )}

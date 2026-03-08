@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Refund policy constants (in kobo)
 const BOOKING_FEE = 500000; // ₦5,000
-const PROCESSING_FEE_DEDUCTION = 30000; // ₦300 — covers Paystack transaction fee + admin overhead
+const PROCESSING_FEE_DEDUCTION = 30000; // ₦300
 const REFUNDABLE_AMOUNT = BOOKING_FEE - PROCESSING_FEE_DEDUCTION; // ₦4,700
 
 serve(async (req) => {
@@ -35,7 +35,7 @@ serve(async (req) => {
     if (!adminCheck) throw new Error('Not an admin');
 
     const { dispute_id, refund_type } = await req.json();
-    // refund_type: 'partial' (₦4,700) | 'full' (₦5,000) | 'wallet_credit' (₦5,000 credit, no Paystack fee) | 'none'
+    // refund_type: 'partial' | 'full' | 'wallet_credit' | 'none' | 'manual'
 
     if (!dispute_id) throw new Error('dispute_id is required');
 
@@ -48,24 +48,36 @@ serve(async (req) => {
     if (disputeErr || !dispute) throw new Error('Dispute not found');
     if (dispute.status !== 'open') throw new Error('Dispute is not open');
 
-    // Find the booking fee payment for this job
-    const { data: payment, error: paymentErr } = await supabase
+    // Find the booking fee payment (get latest to handle potential duplicates)
+    const { data: payments, error: paymentErr } = await supabase
       .from('payments')
       .select('*')
       .eq('job_id', dispute.job_id)
       .eq('payment_type', 'inspection_fee')
       .eq('status', 'paid')
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
     if (paymentErr) throw new Error('Error fetching payment: ' + paymentErr.message);
+    const payment = payments && payments.length > 0 ? payments[0] : null;
+
+    // Manual resolution: flag for manual follow-up — don't close, don't refund yet
+    if (refund_type === 'manual') {
+      await supabase
+        .from('disputes')
+        .update({ status: 'resolved', resolution_notes: 'Admin is reviewing manually. Dispute will be closed after resolution is confirmed.' })
+        .eq('id', dispute_id);
+
+      return new Response(JSON.stringify({ success: true, refund: null, resolution_notes: 'Manual resolution initiated.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     let refundResult = null;
 
     if (refund_type === 'wallet_credit') {
-      // Issue ₦5,000 as platform wallet credit — no Paystack fee, no loss to admin
-      const creditAmount = BOOKING_FEE; // full ₦5,000 in kobo
+      const creditAmount = BOOKING_FEE;
 
-      // Insert wallet transaction
       const { error: walletTxErr } = await supabase
         .from('wallet_transactions')
         .insert({
@@ -75,56 +87,54 @@ serve(async (req) => {
           description: 'Refund credit for unserviced booking — dispute #' + dispute_id.slice(0, 8),
           reference: dispute_id,
         });
-
       if (walletTxErr) throw new Error('Failed to create wallet transaction: ' + walletTxErr.message);
 
-      // Update profile wallet_balance
       const { data: profile } = await supabase
         .from('profiles')
         .select('wallet_balance')
         .eq('user_id', dispute.customer_id)
         .single();
-
       const currentBalance = profile?.wallet_balance ?? 0;
-
       await supabase
         .from('profiles')
         .update({ wallet_balance: currentBalance + creditAmount })
         .eq('user_id', dispute.customer_id);
 
-      // Mark payment as refunded
       if (payment) {
-        await supabase
-          .from('payments')
-          .update({ status: 'refunded' })
-          .eq('id', payment.id);
+        await supabase.from('payments').update({ status: 'refunded' }).eq('id', payment.id);
       }
 
-      // Cancel job
-      await supabase
-        .from('jobs')
-        .update({ status: 'cancelled', cancellation_reason: `Wallet credit refund approved by admin. Reason: ${dispute.reason}` })
-        .eq('id', dispute.job_id);
+      if (dispute.job_id) {
+        await supabase
+          .from('jobs')
+          .update({ status: 'cancelled', cancellation_reason: `Dispute resolved: Wallet credit refund approved. Reason: ${dispute.reason}` })
+          .eq('id', dispute.job_id);
+      }
 
       refundResult = { type: 'wallet_credit', amount: creditAmount };
 
-    } else if (refund_type !== 'none' && payment?.paystack_reference) {
+    } else if (refund_type === 'none') {
+      // No refund — just note on job if exists
+      if (dispute.job_id) {
+        await supabase
+          .from('jobs')
+          .update({ cancellation_reason: `Dispute closed by admin: no refund issued. Reason: ${dispute.reason}` })
+          .eq('id', dispute.job_id);
+      }
+
+    } else if ((refund_type === 'partial' || refund_type === 'full') && payment?.paystack_reference) {
       const refundAmount = refund_type === 'full' ? BOOKING_FEE : REFUNDABLE_AMOUNT;
 
       const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY');
       if (!PAYSTACK_SECRET) throw new Error('Paystack secret key not configured');
 
-      // Call Paystack Refund API
       const paystackRes = await fetch('https://api.paystack.co/refund', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          transaction: payment.paystack_reference,
-          amount: refundAmount,
-        }),
+        body: JSON.stringify({ transaction: payment.paystack_reference, amount: refundAmount }),
       });
 
       const paystackData = await paystackRes.json();
@@ -135,21 +145,17 @@ serve(async (req) => {
       }
 
       refundResult = paystackData.data;
+      await supabase.from('payments').update({ status: 'refunded' }).eq('id', payment.id);
 
-      // Update payment record to refunded
-      await supabase
-        .from('payments')
-        .update({ status: 'refunded' })
-        .eq('id', payment.id);
-
-      // Update job to cancelled
-      await supabase
-        .from('jobs')
-        .update({ status: 'cancelled', cancellation_reason: `Refund approved by admin. Reason: ${dispute.reason}` })
-        .eq('id', dispute.job_id);
+      if (dispute.job_id) {
+        await supabase
+          .from('jobs')
+          .update({ status: 'cancelled', cancellation_reason: `Dispute resolved: Cash refund approved. Reason: ${dispute.reason}` })
+          .eq('id', dispute.job_id);
+      }
     }
 
-    // Resolve the dispute
+    // Resolve and close the dispute
     const resolutionNote = refund_type === 'none'
       ? 'Admin reviewed and closed. No refund issued.'
       : refund_type === 'wallet_credit'
