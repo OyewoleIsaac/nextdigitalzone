@@ -11,10 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User,
+  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning,
 } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
+import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
