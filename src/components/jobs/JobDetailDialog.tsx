@@ -1,11 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { JobStatusBadge } from './JobStatusBadge';
+import { JobPhotos } from './JobPhotos';
 import { useJobHistory } from '@/hooks/useJobs';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Calendar, Clock, Wrench, Package, Camera, Image } from 'lucide-react';
+import { MapPin, Calendar, Clock, Wrench, Package, Camera } from 'lucide-react';
 import type { Job } from '@/hooks/useJobs';
-import { useState } from 'react';
 
 interface JobDetailDialogProps {
   job: Job | null;
