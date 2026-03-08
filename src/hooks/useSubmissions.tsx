@@ -119,6 +119,19 @@ export function useUpdateArtisanSubmission() {
         .single();
       
       if (error) throw error;
+
+      // When confirmed, verify the user's profile via user_id stored in metadata
+      if (status === 'confirmed' && data?.metadata) {
+        const meta = data.metadata as Record<string, unknown>;
+        const userId = meta?.user_id as string | undefined;
+        if (userId) {
+          await supabase
+            .from('profiles')
+            .update({ is_verified: true, is_active: true })
+            .eq('user_id', userId);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
