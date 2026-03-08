@@ -24,7 +24,7 @@ interface IdVerificationStepProps {
 const ID_TYPE_LABELS: Record<IdType, string> = {
   nin: 'National Identification Number (NIN)',
   drivers_license: "Driver's License",
-  voters_card: 'Permanent Voter's Card (PVC)',
+  voters_card: 'Permanent Voter Card (PVC)',
   international_passport: 'International Passport',
   staff_id: 'Staff / Student ID',
 };

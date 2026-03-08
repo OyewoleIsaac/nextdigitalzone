@@ -149,11 +149,11 @@ export function CityAddressField({ value, coords, onChange, role }: CityAddressF
 
       {/* Verified address display */}
       {isVerified && value && (
-        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-sm">
-          <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-success/10 border border-success/30 text-sm">
+          <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
           <div>
-            <p className="text-green-700 font-medium text-xs mb-0.5">Address Verified ✓</p>
-            <p className="text-green-600 text-xs">{value}</p>
+            <p className="text-success font-medium text-xs mb-0.5">Address Verified ✓</p>
+            <p className="text-success/80 text-xs">{value}</p>
           </div>
         </div>
       )}
