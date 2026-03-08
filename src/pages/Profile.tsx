@@ -85,7 +85,6 @@ const ProfilePage = () => {
           address: address || null,
           latitude: addressCoords?.lat ?? null,
           longitude: addressCoords?.lng ?? null,
-          updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
       if (error) throw error;
@@ -99,7 +98,6 @@ const ProfilePage = () => {
             years_experience: yearsExperience ? parseInt(yearsExperience) : null,
             latitude: addressCoords?.lat ?? artisanProfile.latitude,
             longitude: addressCoords?.lng ?? artisanProfile.longitude,
-            updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
         if (artisanError) throw artisanError;
