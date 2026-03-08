@@ -257,30 +257,23 @@ const CustomerDashboard = () => {
                 const draftFee = getDraftFeeDisplay(job);
                 return (
                   <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                    <div className="flex gap-2 mt-2">
-                      {draftFee > 0 && walletBalance >= draftFee ? (
-                        <>
-                          <Button size="sm" className="flex-1" variant="outline"
-                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                            disabled={initPayment.isPending || payWithWallet.isPending}>
-                            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
-                          </Button>
-                          <Button size="sm" className="flex-1"
-                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
-                            disabled={payWithWallet.isPending || initPayment.isPending}>
-                            <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm" className="w-full"
-                          onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                          disabled={initPayment.isPending || !draftFee}>
-                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                          {draftFee > 0
-                            ? `Pay ₦${(draftFee / 100).toLocaleString()} to Activate`
-                            : 'Submit Request (No Fee)'}
-                        </Button>
+                    <div className="mt-2 space-y-1.5">
+                      {walletBalance > 0 && draftFee > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded px-2 py-1">
+                          <Wallet className="h-3 w-3" />
+                          {walletBalance >= draftFee
+                            ? `₦${(draftFee / 100).toLocaleString()} will be paid from wallet credit`
+                            : `₦${(walletBalance / 100).toLocaleString()} wallet credit will be applied; pay ₦${((draftFee - walletBalance) / 100).toLocaleString()} by card`}
+                        </div>
                       )}
+                      <Button size="sm" className="w-full"
+                        onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job); }}
+                        disabled={initPayment.isPending || payWithWallet.isPending || !draftFee}>
+                        {(initPayment.isPending || payWithWallet.isPending) ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5 mr-1.5" />}
+                        {draftFee > 0
+                          ? `Pay ₦${(Math.max(0, draftFee - walletBalance) / 100).toLocaleString() !== '0' ? (Math.max(0, draftFee - walletBalance) / 100).toLocaleString() : (draftFee / 100).toLocaleString()} to Activate`
+                          : 'Submit Request (No Fee)'}
+                      </Button>
                     </div>
                   </JobCard>
                 );
