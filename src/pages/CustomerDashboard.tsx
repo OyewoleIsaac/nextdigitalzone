@@ -95,6 +95,11 @@ const CustomerDashboard = () => {
 
   const handleConfirmInspection = async (job: Job) => {
     if (!user) return;
+    // Only allow if status is inspection_requested (artisan has marked it done)
+    if (job.status !== 'inspection_requested' as any) {
+      toast.error('Inspection has not been marked as done by the artisan yet.');
+      return;
+    }
     await updateJob.mutateAsync({ id: job.id, status: 'inspection_paid' as any });
     await addHistory.mutateAsync({
       job_id: job.id,
