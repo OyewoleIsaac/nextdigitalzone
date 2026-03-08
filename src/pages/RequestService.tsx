@@ -123,6 +123,28 @@ const RequestService = () => {
     );
   }
 
+  // Block unverified customers
+  if (profile && !profile.is_verified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-warning/10 mx-auto mb-4">
+              <Shield className="h-7 w-7 text-warning" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Account Pending Verification</h2>
+            <p className="text-muted-foreground mb-6">
+              Your account is under review by our team. You'll be able to request services once your identity is verified. This usually takes 1–2 business days.
+            </p>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="section-container py-8 max-w-2xl">
