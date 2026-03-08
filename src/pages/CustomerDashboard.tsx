@@ -64,25 +64,48 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  const handlePayDraftFee = async (job: Job, useWalletCredit = false) => {
+  // Shared hybrid payment: deduct wallet credit first, charge remainder via Paystack
+  const handleHybridPayment = async (
+    job: Job,
+    feeAmount: number,
+    paymentType: 'inspection_fee' | 'job_payment'
+  ) => {
+    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
+    const creditToApply = Math.min(walletBalance, feeAmount);
+    const remaining = feeAmount - creditToApply;
+
+    // Fully covered by wallet
+    if (remaining === 0) {
+      payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
+      return;
+    }
+
+    // Partial wallet + Paystack for remainder
+    try {
+      if (creditToApply > 0) {
+        toast.info(`₦${(creditToApply / 100).toLocaleString()} wallet credit will be applied. Redirecting to pay the ₦${(remaining / 100).toLocaleString()} balance.`);
+      }
+      const result = await initPayment.mutateAsync({
+        job_id: job.id,
+        payment_type: paymentType,
+        amount: feeAmount,
+        wallet_credit_applied: creditToApply,
+      });
+      if (paymentType === 'inspection_fee') {
+        window.location.href = result.authorization_url;
+      } else {
+        window.open(result.authorization_url, '_blank');
+      }
+    } catch { /* handled */ }
+  };
+
+  const handlePayDraftFee = async (job: Job) => {
     const cat = (job as any).category;
     const feeAmount = job.inspection_fee
       ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
       ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
       ?? 0;
-    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
-    if (useWalletCredit) {
-      payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
-      return;
-    }
-    try {
-      const result = await initPayment.mutateAsync({
-        job_id: job.id,
-        payment_type: 'inspection_fee',
-        amount: feeAmount,
-      });
-      window.location.href = result.authorization_url;
-    } catch { /* handled */ }
+    await handleHybridPayment(job, feeAmount, 'inspection_fee');
   };
 
   const getDraftFeeDisplay = (job: Job) => {
@@ -115,10 +138,7 @@ const CustomerDashboard = () => {
   const handlePayForJob = async (job: Job) => {
     const amount = job.quoted_amount || job.final_amount;
     if (!amount) return;
-    try {
-      const result = await initPayment.mutateAsync({ job_id: job.id, payment_type: 'job_payment', amount });
-      window.open(result.authorization_url, '_blank');
-    } catch { /* handled */ }
+    await handleHybridPayment(job, amount, 'job_payment');
   };
 
   // Accept quote & move to price_agreed — stay in dialog to prompt payment
@@ -234,30 +254,23 @@ const CustomerDashboard = () => {
                 const draftFee = getDraftFeeDisplay(job);
                 return (
                   <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                    <div className="flex gap-2 mt-2">
-                      {draftFee > 0 && walletBalance >= draftFee ? (
-                        <>
-                          <Button size="sm" className="flex-1" variant="outline"
-                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                            disabled={initPayment.isPending || payWithWallet.isPending}>
-                            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
-                          </Button>
-                          <Button size="sm" className="flex-1"
-                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
-                            disabled={payWithWallet.isPending || initPayment.isPending}>
-                            <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm" className="w-full"
-                          onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                          disabled={initPayment.isPending || !draftFee}>
-                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                          {draftFee > 0
-                            ? `Pay ₦${(draftFee / 100).toLocaleString()} to Activate`
-                            : 'Submit Request (No Fee)'}
-                        </Button>
+                    <div className="mt-2 space-y-1.5">
+                      {walletBalance > 0 && draftFee > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded px-2 py-1">
+                          <Wallet className="h-3 w-3" />
+                          {walletBalance >= draftFee
+                            ? `₦${(draftFee / 100).toLocaleString()} will be paid from wallet credit`
+                            : `₦${(walletBalance / 100).toLocaleString()} wallet credit will be applied; pay ₦${((draftFee - walletBalance) / 100).toLocaleString()} by card`}
+                        </div>
                       )}
+                      <Button size="sm" className="w-full"
+                        onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job); }}
+                        disabled={initPayment.isPending || payWithWallet.isPending || !draftFee}>
+                        {(initPayment.isPending || payWithWallet.isPending) ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5 mr-1.5" />}
+                        {draftFee > 0
+                          ? `Pay ₦${(Math.max(0, draftFee - walletBalance) / 100).toLocaleString() !== '0' ? (Math.max(0, draftFee - walletBalance) / 100).toLocaleString() : (draftFee / 100).toLocaleString()} to Activate`
+                          : 'Submit Request (No Fee)'}
+                      </Button>
                     </div>
                   </JobCard>
                 );
@@ -501,10 +514,29 @@ const CustomerDashboard = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">Workmanship</span><span>₦{((selectedJob as any).workmanship_cost / 100).toLocaleString()}</span></div>
               )}
               <div className="flex justify-between font-bold border-t pt-2"><span>Total to Pay</span><span className="text-primary">₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()}</span></div>
+              {walletBalance > 0 && (() => {
+                const total = selectedJob.quoted_amount || 0;
+                const credit = Math.min(walletBalance, total);
+                const remaining = total - credit;
+                return (
+                  <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded px-2 py-1 mt-1">
+                    <Wallet className="h-3 w-3 shrink-0" />
+                    {remaining === 0
+                      ? `₦${(total / 100).toLocaleString()} will be fully paid from wallet credit`
+                      : `₦${(credit / 100).toLocaleString()} wallet credit applied — pay ₦${(remaining / 100).toLocaleString()} by card`}
+                  </div>
+                );
+              })()}
             </div>
-            <Button className="w-full" onClick={() => handlePayForJob(selectedJob)} disabled={initPayment.isPending}>
-              {initPayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
-              Pay ₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()} (Held in Escrow)
+            <Button className="w-full" onClick={() => handlePayForJob(selectedJob)} disabled={initPayment.isPending || payWithWallet.isPending}>
+              {(initPayment.isPending || payWithWallet.isPending) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              {(() => {
+                const total = selectedJob.quoted_amount || 0;
+                const remaining = Math.max(0, total - walletBalance);
+                return remaining === 0
+                  ? `Pay ₦${(total / 100).toLocaleString()} with Wallet Credit`
+                  : `Pay ₦${(remaining / 100).toLocaleString()}${walletBalance > 0 ? ' (after wallet credit)' : ''} (Held in Escrow)`;
+              })()}
             </Button>
           </div>
         )}
