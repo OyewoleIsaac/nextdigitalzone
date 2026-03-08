@@ -11,10 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User,
+  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning,
 } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
+import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ const ArtisanDashboard = () => {
   const [quoteAmount, setQuoteAmount] = useState('');
   const [requiresInspection, setRequiresInspection] = useState(false);
   const [inspectionFee, setInspectionFee] = useState('');
+  const [showGeneralDispute, setShowGeneralDispute] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -131,6 +133,9 @@ const ArtisanDashboard = () => {
               </Badge>
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-1" /> Profile
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
+                <MessageCircleWarning className="h-4 w-4 mr-1" /> File a Complaint
               </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-1" /> Sign Out
@@ -288,6 +293,12 @@ const ArtisanDashboard = () => {
           </div>
         )}
       </JobDetailDialog>
+
+      <GeneralDisputeDialog
+        open={showGeneralDispute}
+        onOpenChange={setShowGeneralDispute}
+        userRole="artisan"
+      />
     </div>
   );
 };

@@ -5,11 +5,12 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText, MessageCircleWarning } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
 import { DisputeDialog } from '@/components/jobs/DisputeDialog';
+import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
 import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
@@ -33,6 +34,7 @@ const CustomerDashboard = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [disputeJob, setDisputeJob] = useState<Job | null>(null);
+  const [showGeneralDispute, setShowGeneralDispute] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
@@ -139,6 +141,9 @@ const CustomerDashboard = () => {
               )}
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-1" /> Profile
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
+                <MessageCircleWarning className="h-4 w-4 mr-1" /> File a Complaint
               </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-1" /> Sign Out
@@ -484,6 +489,11 @@ const CustomerDashboard = () => {
         job={disputeJob}
         open={!!disputeJob}
         onOpenChange={(o) => !o && setDisputeJob(null)}
+      />
+      <GeneralDisputeDialog
+        open={showGeneralDispute}
+        onOpenChange={setShowGeneralDispute}
+        userRole="customer"
       />
     </div>
   );
