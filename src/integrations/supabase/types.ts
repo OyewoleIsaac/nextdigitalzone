@@ -560,6 +560,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
+          wallet_balance: number
         }
         Insert: {
           address?: string | null
@@ -575,6 +576,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
+          wallet_balance?: number
         }
         Update: {
           address?: string | null
@@ -590,6 +592,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
+          wallet_balance?: number
         }
         Relationships: []
       }
@@ -682,6 +685,36 @@ export type Database = {
           id?: string
           ip_address?: string
           window_start?: string | null
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          reference: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          reference?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          reference?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
