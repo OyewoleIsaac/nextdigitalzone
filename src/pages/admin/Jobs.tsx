@@ -100,8 +100,9 @@ const AdminJobs = () => {
       const userIds = artisanData.map((a: any) => a.user_id);
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, full_name, phone, address, is_verified')
-        .in('user_id', userIds);
+        .select('user_id, full_name, phone, address, is_verified, is_active')
+        .in('user_id', userIds)
+        .eq('is_active', true);
       if (profileError) throw profileError;
 
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
