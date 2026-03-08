@@ -402,11 +402,19 @@ const ProfilePage = () => {
         </div>
 
         <Tabs defaultValue="profile">
-          <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-5' : 'grid-cols-3'}`}>
             <TabsTrigger value="profile" className="flex-1"><User className="h-3.5 w-3.5 mr-1.5" />Profile</TabsTrigger>
             <TabsTrigger value="location" className="flex-1"><MapPin className="h-3.5 w-3.5 mr-1.5" />Location</TabsTrigger>
             {isArtisan && (
-              <TabsTrigger value="certificates" className="flex-1"><Award className="h-3.5 w-3.5 mr-1.5" />Certificates</TabsTrigger>
+              <TabsTrigger value="bank" className="flex-1 relative">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />Bank
+                {!(artisanProfile as any)?.account_number && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
+                )}
+              </TabsTrigger>
+            )}
+            {isArtisan && (
+              <TabsTrigger value="certificates" className="flex-1"><Award className="h-3.5 w-3.5 mr-1.5" />Certs</TabsTrigger>
             )}
             <TabsTrigger value="password" className="flex-1"><Lock className="h-3.5 w-3.5 mr-1.5" />Password</TabsTrigger>
           </TabsList>
