@@ -93,7 +93,8 @@ const CustomerDashboard = () => {
     }
   };
 
-  const activeJobs = jobs?.filter(j => !['confirmed', 'cancelled'].includes(j.status)) || [];
+  const draftJobs = jobs?.filter(j => j.status === 'draft') || [];
+  const activeJobs = jobs?.filter(j => !['draft', 'confirmed', 'cancelled'].includes(j.status)) || [];
   const pastJobs = jobs?.filter(j => ['confirmed', 'cancelled'].includes(j.status)) || [];
 
   return (
