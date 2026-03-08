@@ -309,6 +309,7 @@ export type Database = {
           customer_id: string
           id: string
           job_id: string
+          preferred_refund_type: string | null
           reason: string
           resolution_notes: string | null
           status: string
@@ -320,6 +321,7 @@ export type Database = {
           customer_id: string
           id?: string
           job_id: string
+          preferred_refund_type?: string | null
           reason: string
           resolution_notes?: string | null
           status?: string
@@ -331,6 +333,7 @@ export type Database = {
           customer_id?: string
           id?: string
           job_id?: string
+          preferred_refund_type?: string | null
           reason?: string
           resolution_notes?: string | null
           status?: string

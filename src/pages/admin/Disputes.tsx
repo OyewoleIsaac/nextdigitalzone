@@ -103,10 +103,24 @@ export default function DisputesPage() {
                     {d.resolution_notes && (
                       <p className="text-xs text-muted-foreground mt-1 italic">Resolution: {d.resolution_notes}</p>
                     )}
+                    {d.preferred_refund_type && (
+                      <p className="text-xs mt-1 flex items-center gap-1">
+                        <span className="text-muted-foreground">Customer prefers:</span>
+                        <span className={`font-medium ${d.preferred_refund_type === 'wallet_credit' ? 'text-green-600' : 'text-blue-600'}`}>
+                          {d.preferred_refund_type === 'wallet_credit' ? '💳 Wallet Credit (₦5,000)' : '🏦 Cash Refund (₦4,700)'}
+                        </span>
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">Job ID: {d.job_id.slice(0, 8)}…</p>
                   </div>
                   {d.status === 'open' && (
-                    <Button size="sm" variant="outline" onClick={() => { setSelected(d); setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none'); }}>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setSelected(d);
+                      // Pre-select based on customer preference, fallback to wallet_credit for refund requests
+                      if (d.preferred_refund_type === 'cash_refund') setRefundType('partial');
+                      else if (d.preferred_refund_type === 'wallet_credit') setRefundType('wallet_credit');
+                      else setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none');
+                    }}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Resolve
                     </Button>
                   )}

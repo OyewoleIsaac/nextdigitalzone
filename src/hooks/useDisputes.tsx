@@ -10,6 +10,7 @@ export interface Dispute {
   reason: string;
   status: 'open' | 'resolved' | 'closed';
   resolution_notes: string | null;
+  preferred_refund_type: 'wallet_credit' | 'cash_refund' | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +48,12 @@ export function useAllDisputes() {
 export function useOpenDispute() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { job_id: string; artisan_id: string; reason: string }) => {
+    mutationFn: async (payload: {
+      job_id: string;
+      artisan_id: string;
+      reason: string;
+      preferred_refund_type?: 'wallet_credit' | 'cash_refund';
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       const { error } = await supabase.from('disputes').insert({
@@ -55,6 +61,7 @@ export function useOpenDispute() {
         customer_id: user.id,
         artisan_id: payload.artisan_id,
         reason: payload.reason,
+        preferred_refund_type: payload.preferred_refund_type ?? null,
       });
       if (error) throw error;
     },
