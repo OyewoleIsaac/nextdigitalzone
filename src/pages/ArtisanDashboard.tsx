@@ -35,9 +35,6 @@ const ArtisanDashboard = () => {
   const [workmanshipCost, setWorkmanshipCost] = useState('');
   const [inspectionNotes, setInspectionNotes] = useState('');
   const [showGeneralDispute, setShowGeneralDispute] = useState(false);
-
-  // Import dispute data for selected job
-  const { useDisputeForJob } = require('@/hooks/useDisputes') as typeof import('@/hooks/useDisputes');
   const { data: selectedJobDispute } = useDisputeForJob(selectedJob?.id);
 
   useEffect(() => {
