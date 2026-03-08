@@ -159,7 +159,7 @@ export function CityAddressField({ value, coords, onChange, role }: CityAddressF
       )}
 
       {!isVerified && (
-        <p className="text-xs text-amber-600 flex items-center gap-1">
+        <p className="text-xs text-warning flex items-center gap-1">
           <MapPin className="h-3 w-3" />
           Please use GPS or select your city above to verify your location
         </p>

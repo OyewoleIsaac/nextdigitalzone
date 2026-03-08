@@ -163,11 +163,11 @@ export function IdVerificationStep({ onChange, value }: IdVerificationStepProps)
             <p className="text-xs text-muted-foreground">Upload a clear photo or scan of your ID (JPG, PNG, PDF — max 5MB)</p>
 
             {uploadedFile ? (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                <CheckCircle className="h-4 w-4 text-success shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-green-700 truncate">{uploadedFile.name}</p>
-                  <p className="text-xs text-green-600">Uploaded successfully</p>
+                  <p className="text-xs font-medium text-success truncate">{uploadedFile.name}</p>
+                  <p className="text-xs text-success/80">Uploaded successfully</p>
                 </div>
                 <Button
                   type="button"
