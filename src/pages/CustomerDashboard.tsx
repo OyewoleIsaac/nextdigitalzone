@@ -175,13 +175,13 @@ const CustomerDashboard = () => {
               <CardDescription>Find a skilled artisan near you.</CardDescription>
             </CardHeader>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/profile')}>
             <CardHeader>
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent mb-2">
                 <User className="h-6 w-6" />
               </div>
               <CardTitle>My Profile</CardTitle>
-              <CardDescription>{profile?.phone} • {profile?.address || 'No address set'}</CardDescription>
+              <CardDescription>Update your info, location & password</CardDescription>
             </CardHeader>
           </Card>
         </div>
