@@ -514,10 +514,29 @@ const CustomerDashboard = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">Workmanship</span><span>₦{((selectedJob as any).workmanship_cost / 100).toLocaleString()}</span></div>
               )}
               <div className="flex justify-between font-bold border-t pt-2"><span>Total to Pay</span><span className="text-primary">₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()}</span></div>
+              {walletBalance > 0 && (() => {
+                const total = selectedJob.quoted_amount || 0;
+                const credit = Math.min(walletBalance, total);
+                const remaining = total - credit;
+                return (
+                  <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded px-2 py-1 mt-1">
+                    <Wallet className="h-3 w-3 shrink-0" />
+                    {remaining === 0
+                      ? `₦${(total / 100).toLocaleString()} will be fully paid from wallet credit`
+                      : `₦${(credit / 100).toLocaleString()} wallet credit applied — pay ₦${(remaining / 100).toLocaleString()} by card`}
+                  </div>
+                );
+              })()}
             </div>
-            <Button className="w-full" onClick={() => handlePayForJob(selectedJob)} disabled={initPayment.isPending}>
-              {initPayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
-              Pay ₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()} (Held in Escrow)
+            <Button className="w-full" onClick={() => handlePayForJob(selectedJob)} disabled={initPayment.isPending || payWithWallet.isPending}>
+              {(initPayment.isPending || payWithWallet.isPending) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              {(() => {
+                const total = selectedJob.quoted_amount || 0;
+                const remaining = Math.max(0, total - walletBalance);
+                return remaining === 0
+                  ? `Pay ₦${(total / 100).toLocaleString()} with Wallet Credit`
+                  : `Pay ₦${(remaining / 100).toLocaleString()}${walletBalance > 0 ? ' (after wallet credit)' : ''} (Held in Escrow)`;
+              })()}
             </Button>
           </div>
         )}
