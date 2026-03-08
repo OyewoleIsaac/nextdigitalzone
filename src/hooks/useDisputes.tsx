@@ -51,7 +51,7 @@ export function useAllDisputes() {
       ];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, full_name, phone')
+        .select('user_id, full_name, phone, address, role')
         .in('user_id', userIds);
       const profileMap = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]));
 
@@ -59,7 +59,10 @@ export function useAllDisputes() {
         ...d,
         customer_profile: profileMap[d.customer_id] || null,
         artisan_profile: d.artisan_id ? (profileMap[d.artisan_id] || null) : null,
-      })) as (Dispute & { customer_profile: { full_name: string; phone: string } | null; artisan_profile: { full_name: string; phone: string } | null })[];
+      })) as (Dispute & {
+        customer_profile: { full_name: string; phone: string; address: string | null; role: string } | null;
+        artisan_profile: { full_name: string; phone: string; address: string | null; role: string } | null;
+      })[];
     },
   });
 }
