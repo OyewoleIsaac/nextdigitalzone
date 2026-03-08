@@ -53,20 +53,32 @@ Deno.serve(async (req) => {
         console.error("Payment update error:", paymentError);
       }
 
-      // Update job status based on payment type
+      // For inspection_fee: promote job from 'draft' → 'pending' so admin can see it
       if (payment_type === "inspection_fee" && job_id) {
+        // Fetch current job status to know old_status
+        const { data: job } = await supabase
+          .from("jobs")
+          .select("status")
+          .eq("id", job_id)
+          .single();
+
+        const oldStatus = job?.status || "draft";
+
         await supabase
           .from("jobs")
-          .update({ status: "inspection_paid" })
+          .update({ status: "pending", inspection_fee: event.data.amount })
           .eq("id", job_id);
 
         await supabase.from("job_status_history").insert({
           job_id,
-          old_status: "inspection_requested",
-          new_status: "inspection_paid",
+          old_status: oldStatus,
+          new_status: "pending",
           changed_by: customer_id,
-          notes: "Inspection fee paid via Paystack",
+          notes: "Booking/inspection fee paid — job now active and awaiting artisan assignment",
         });
+
+        console.log(`Job ${job_id} promoted from draft to pending after booking fee payment`);
+
       } else if (payment_type === "job_payment" && job_id) {
         await supabase
           .from("jobs")
