@@ -146,6 +146,19 @@ const ArtisanDashboard = () => {
       </header>
 
       <main className="section-container py-8">
+        {/* Verification Banner */}
+        {profile && !profile.is_verified && (
+          <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/40 bg-warning/10 mb-6">
+            <Hammer className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-warning">Account Pending Verification</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Your profile is under review. The admin will assign jobs to you once your identity is verified (usually 1–2 business days).
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Welcome, {profile?.full_name}!</h1>
           <p className="text-muted-foreground mt-1">
