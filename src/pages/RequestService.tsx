@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useCategories } from '@/hooks/useCategories';
-import type { Category } from '@/hooks/useCategories';
+import type { Category } from '@/lib/types';
 import { useCreateJob } from '@/hooks/useJobs';
 import { useInitializePayment } from '@/hooks/usePayments';
 import { Button } from '@/components/ui/button';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAllCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories';
-import type { Category } from '@/hooks/useCategories';
+import type { Category } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
