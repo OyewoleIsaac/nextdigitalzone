@@ -353,7 +353,7 @@ const AdminJobs = () => {
                         </Button>
                       )}
                       {job.status === 'confirmed' && !(job as any).workmanship_released_at && (
-                        <Button size="sm" variant="outline" onClick={() => handleReleaseWorkmanship(job)} disabled={updateJob.isPending}>
+                        <Button size="sm" variant="outline" onClick={() => openReleaseDialog(job)} disabled={updateJob.isPending}>
                           <Wrench className="h-4 w-4 mr-1" /> Release Workmanship
                         </Button>
                       )}
