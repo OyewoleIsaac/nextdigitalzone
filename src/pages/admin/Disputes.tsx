@@ -100,6 +100,26 @@ export default function DisputesPage() {
                       <span className="text-xs text-muted-foreground">{format(new Date(d.created_at), 'MMM d, yyyy')}</span>
                     </div>
                     <p className="text-sm">{d.reason}</p>
+                    {/* Participant names */}
+                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs">
+                      {(d as any).customer_profile && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          <span className="font-medium text-foreground">{(d as any).customer_profile.full_name}</span>
+                          {(d as any).customer_profile.phone && (
+                            <a href={`tel:${(d as any).customer_profile.phone}`} className="text-primary">{(d as any).customer_profile.phone}</a>
+                          )}
+                          <span>(Customer)</span>
+                        </span>
+                      )}
+                      {(d as any).artisan_profile && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Wallet className="h-3 w-3" />
+                          <span className="font-medium text-foreground">{(d as any).artisan_profile.full_name}</span>
+                          <span>(Artisan)</span>
+                        </span>
+                      )}
+                    </div>
                     {d.resolution_notes && (
                       <p className="text-xs text-muted-foreground mt-1 italic">Resolution: {d.resolution_notes}</p>
                     )}
