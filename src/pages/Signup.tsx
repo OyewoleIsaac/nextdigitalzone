@@ -197,6 +197,8 @@ const Signup = () => {
       toast.success('Account created! Please verify your email to continue.');
       // Only artisans go to certificate upload page; customers go straight to dashboard
       if (role === 'artisan') {
+        // Store submission ID so VerifyAccount can link the certificate attachment
+        localStorage.setItem('pending_artisan_submission_id', artisanSubmissionId);
         navigate('/verify-account');
       } else {
         navigate('/dashboard');
