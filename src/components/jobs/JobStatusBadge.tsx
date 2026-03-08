@@ -11,8 +11,8 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   price_agreed: { label: 'Price Agreed', className: 'bg-primary/15 text-primary border-primary/30' },
   payment_escrowed: { label: 'Payment Held', className: 'bg-success/15 text-success border-success/30' },
   in_progress: { label: 'In Progress', className: 'bg-primary/15 text-primary border-primary/30' },
-  completed: { label: 'Completed', className: 'bg-success/15 text-success border-success/30' },
-  confirmed: { label: 'Confirmed', className: 'bg-success/15 text-success border-success/30' },
+  completed: { label: 'Awaiting Confirmation', className: 'bg-warning/15 text-warning border-warning/30' },
+  confirmed: { label: 'Completion Confirmed', className: 'bg-success/15 text-success border-success/30' },
   disputed: { label: 'Disputed', className: 'bg-destructive/15 text-destructive border-destructive/30' },
   cancelled: { label: 'Cancelled', className: 'bg-muted text-muted-foreground border-muted' },
 };
