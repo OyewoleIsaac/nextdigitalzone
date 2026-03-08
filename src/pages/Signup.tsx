@@ -29,8 +29,6 @@ type SignupStep = 'role' | 'details' | 'id-verification';
 const Signup = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const createProfile = useCreateProfile();
-  const createArtisanProfile = useCreateArtisanProfile();
   const { data: categories } = useCategories();
 
   const [step, setStep] = useState<SignupStep>('role');
