@@ -371,8 +371,8 @@ const CustomerDashboard = () => {
           </div>
         )}
 
-        {/* Artisan marked inspection done — customer confirms */}
-        {selectedJob?.status === 'inspection_paid' && (
+        {/* Artisan marked inspection done — customer must confirm (status: inspection_requested) */}
+        {(selectedJob?.status as any) === 'inspection_requested' && (
           <div className="pt-4 space-y-3 border-t">
             {(selectedJob as any).artisan_profile && (
               <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
@@ -395,13 +395,26 @@ const CustomerDashboard = () => {
             )}
             <div className="space-y-2">
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-                <p className="font-medium text-primary mb-1">Artisan marked inspection as done</p>
-                <p className="text-xs text-muted-foreground">Please confirm below that the artisan did carry out the inspection at your location.</p>
+                <p className="font-medium text-primary mb-1">Artisan has marked inspection as done</p>
+                <p className="text-xs text-muted-foreground">Please confirm below that the artisan carried out the inspection at your location. This allows them to submit a quote.</p>
               </div>
               <Button className="w-full" onClick={() => handleConfirmInspection(selectedJob)} disabled={updateJob.isPending}>
                 {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Yes, Inspection Was Carried Out
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Inspection confirmed — show confirmation state */}
+        {selectedJob?.status === 'inspection_paid' && (
+          <div className="pt-4 space-y-3 border-t">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/30 text-sm">
+              <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-success">Inspection Confirmed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You have confirmed the inspection. The artisan is now preparing a quote for you.</p>
+              </div>
             </div>
           </div>
         )}
