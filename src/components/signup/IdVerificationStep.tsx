@@ -224,12 +224,12 @@ export function IdVerificationStep({ onChange, value }: IdVerificationStepProps)
       </div>
 
       {value ? (
-        <div className="flex items-center gap-1.5 text-xs text-green-600">
+        <div className="flex items-center gap-1.5 text-xs text-success">
           <CheckCircle className="h-3.5 w-3.5" />
           ID verification complete
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 text-xs text-amber-600">
+        <div className="flex items-center gap-1.5 text-xs text-warning">
           <AlertCircle className="h-3.5 w-3.5" />
           Complete all fields above to proceed
         </div>
