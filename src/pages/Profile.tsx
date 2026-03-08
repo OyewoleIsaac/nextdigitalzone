@@ -405,7 +405,7 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="profile">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-5' : 'grid-cols-3'}`}>
             <TabsTrigger value="profile" className="flex-1"><User className="h-3.5 w-3.5 mr-1.5" />Profile</TabsTrigger>
             <TabsTrigger value="location" className="flex-1"><MapPin className="h-3.5 w-3.5 mr-1.5" />Location</TabsTrigger>
