@@ -172,11 +172,13 @@ const CustomerDashboard = () => {
               </CardTitle>
               <CardDescription>Credits you can use to pay the booking fee on future service requests.</CardDescription>
             </CardHeader>
-            {walletTx.length > 0 && (
+            {walletTxns.length > 0 && (
               <CardContent className="pt-0">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Transaction History</p>
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <ReceiptText className="h-3 w-3" /> Transaction History
+                </p>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {walletTx.map((tx) => (
+                  {walletTxns.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between text-xs rounded border p-2">
                       <span className="text-muted-foreground truncate max-w-[200px]">{tx.description}</span>
                       <span className={tx.type === 'credit' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
