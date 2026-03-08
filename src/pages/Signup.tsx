@@ -167,7 +167,12 @@ const Signup = () => {
       }
 
       toast.success('Account created! Please verify your email to continue.');
-      navigate('/verify-account');
+      // Only artisans go to certificate upload page; customers go straight to dashboard
+      if (role === 'artisan') {
+        navigate('/verify-account');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(message);
