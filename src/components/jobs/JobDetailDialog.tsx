@@ -122,10 +122,7 @@ export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetail
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
                   <Camera className="h-4 w-4" /> Job Photos
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {photoBefore && <PhotoPreview url={photoBefore} label="Before" />}
-                  {photoAfter && <PhotoPreview url={photoAfter} label="After" />}
-                </div>
+                <JobPhotos photoBefore={photoBefore} photoAfter={photoAfter} />
                 {photoBefore && !photoAfter && (
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> "After" photo not yet uploaded
