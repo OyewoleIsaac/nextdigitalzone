@@ -1,0 +1,1 @@
+ALTER TABLE public.disputes ADD COLUMN preferred_refund_type TEXT DEFAULT NULL;
