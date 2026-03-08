@@ -114,7 +114,7 @@ export default function DisputesPage() {
                         </Badge>
                       )}
                       {d.resolution_notes?.includes('manual') && d.status === 'resolved' && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
                           <Wrench className="h-3 w-3 mr-1" /> Manual Review
                         </Badge>
                       )}
