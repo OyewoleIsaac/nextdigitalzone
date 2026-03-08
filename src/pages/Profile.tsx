@@ -122,12 +122,47 @@ const ProfilePage = () => {
       setBio(artisanProfile.bio || '');
       setCategoryId(artisanProfile.category_id || '');
       setYearsExperience(artisanProfile.years_experience?.toString() || '');
+      setBankCode((artisanProfile as any).bank_code || '');
+      setAccountNumber((artisanProfile as any).account_number || '');
+      setAccountName((artisanProfile as any).account_name || '');
     }
   }, [artisanProfile]);
 
   const handleAddressChange = (addr: string, coords: { lat: number; lng: number }) => {
     setAddress(addr);
     setAddressCoords(coords);
+  };
+
+  const handleSaveBank = async () => {
+    if (!user) return;
+    if (!bankCode || !accountNumber || !accountName) {
+      toast.error('Please fill in all bank account fields');
+      return;
+    }
+    if (accountNumber.length < 10) {
+      toast.error('Please enter a valid 10-digit account number');
+      return;
+    }
+    setSavingBank(true);
+    try {
+      const selectedBank = NIGERIAN_BANKS.find(b => b.code === bankCode);
+      const { error } = await supabase
+        .from('artisan_profiles')
+        .update({
+          bank_code: bankCode,
+          bank_name: selectedBank?.name || '',
+          account_number: accountNumber,
+          account_name: accountName,
+        } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      refetchArtisan();
+      toast.success('Bank account saved! You will receive payments to this account.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save bank details');
+    } finally {
+      setSavingBank(false);
+    }
   };
 
   const handleSaveProfile = async () => {
