@@ -304,11 +304,11 @@ export type Database = {
       }
       disputes: {
         Row: {
-          artisan_id: string
+          artisan_id: string | null
           created_at: string
           customer_id: string
           id: string
-          job_id: string
+          job_id: string | null
           preferred_refund_type: string | null
           reason: string
           resolution_notes: string | null
@@ -316,11 +316,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          artisan_id: string
+          artisan_id?: string | null
           created_at?: string
           customer_id: string
           id?: string
-          job_id: string
+          job_id?: string | null
           preferred_refund_type?: string | null
           reason: string
           resolution_notes?: string | null
@@ -328,11 +328,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          artisan_id?: string
+          artisan_id?: string | null
           created_at?: string
           customer_id?: string
           id?: string
-          job_id?: string
+          job_id?: string | null
           preferred_refund_type?: string | null
           reason?: string
           resolution_notes?: string | null
