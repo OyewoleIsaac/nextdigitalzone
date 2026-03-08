@@ -111,7 +111,9 @@ export default function DisputesPage() {
                         </span>
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">Job ID: {d.job_id.slice(0, 8)}…</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {d.job_id ? `Job ID: ${d.job_id.slice(0, 8)}…` : <span className="italic">General complaint (no job)</span>}
+                    </p>
                   </div>
                   {d.status === 'open' && (
                     <Button size="sm" variant="outline" onClick={() => {
