@@ -236,6 +236,11 @@ const AdminJobs = () => {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold truncate">{job.title}</h3>
                         <JobStatusBadge status={job.status} />
+                        {job.status === 'disputed' && (
+                          <Badge variant="destructive" className="text-[10px] h-4 gap-0.5">
+                            <AlertCircle className="h-2.5 w-2.5" /> Disputed
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1">{job.description}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
