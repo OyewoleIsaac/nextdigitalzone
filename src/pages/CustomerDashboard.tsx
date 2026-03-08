@@ -28,9 +28,12 @@ const CustomerDashboard = () => {
   const addHistory = useAddJobHistory();
   const initPayment = useInitializePayment();
   const releasePayment = useReleasePayment();
+  const { balance: walletBalance, transactions: walletTx } = useWallet();
+  const payWithWallet = usePayWithWalletCredit();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [disputeJob, setDisputeJob] = useState<Job | null>(null);
+  const [showWallet, setShowWallet] = useState(false);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
   useEffect(() => {
