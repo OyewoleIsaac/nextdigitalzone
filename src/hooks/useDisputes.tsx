@@ -49,20 +49,20 @@ export function useOpenDispute() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: {
-      job_id: string;
-      artisan_id: string;
+      job_id?: string | null;
+      artisan_id?: string | null;
       reason: string;
       preferred_refund_type?: 'wallet_credit' | 'cash_refund';
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       const { error } = await supabase.from('disputes').insert({
-        job_id: payload.job_id,
+        job_id: payload.job_id ?? null,
         customer_id: user.id,
-        artisan_id: payload.artisan_id,
+        artisan_id: payload.artisan_id ?? null,
         reason: payload.reason,
         preferred_refund_type: payload.preferred_refund_type ?? null,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
