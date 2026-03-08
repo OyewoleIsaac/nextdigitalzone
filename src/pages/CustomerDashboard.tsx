@@ -229,33 +229,39 @@ const CustomerDashboard = () => {
             </h2>
             <p className="text-sm text-muted-foreground mb-4">These requests are saved as drafts. Pay the required fee to send them to our team.</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              {draftJobs.map((job) => (
-                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                  <div className="flex gap-2 mt-2">
-                    {walletBalance >= (job.inspection_fee || 500000) ? (
-                      <>
-                        <Button size="sm" className="flex-1" variant="outline"
+              {draftJobs.map((job) => {
+                const draftFee = getDraftFeeDisplay(job);
+                return (
+                  <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
+                    <div className="flex gap-2 mt-2">
+                      {draftFee > 0 && walletBalance >= draftFee ? (
+                        <>
+                          <Button size="sm" className="flex-1" variant="outline"
+                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
+                            disabled={initPayment.isPending || payWithWallet.isPending}>
+                            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
+                          </Button>
+                          <Button size="sm" className="flex-1"
+                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
+                            disabled={payWithWallet.isPending || initPayment.isPending}>
+                            <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" className="w-full"
                           onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                          disabled={initPayment.isPending || payWithWallet.isPending}>
-                          <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
+                          disabled={initPayment.isPending || !draftFee}>
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          {draftFee > 0
+                            ? `Pay ₦${(draftFee / 100).toLocaleString()} to Activate`
+                            : 'Submit Request (No Fee)'}
                         </Button>
-                        <Button size="sm" className="flex-1"
-                          onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
-                          disabled={payWithWallet.isPending || initPayment.isPending}>
-                          <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
-                        </Button>
-                      </>
-                    ) : (
-                      <Button size="sm" className="w-full"
-                        onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                        disabled={initPayment.isPending}>
-                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                        Pay ₦{((job.inspection_fee || 500000) / 100).toLocaleString()} to Activate
-                      </Button>
-                    )}
-                  </div>
-                </JobCard>
-              ))}
+                      )}
+                    </div>
+                  </JobCard>
+                );
+              })}
+            </div>
             </div>
           </div>
         )}
