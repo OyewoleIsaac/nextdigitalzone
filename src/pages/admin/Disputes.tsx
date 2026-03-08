@@ -114,7 +114,13 @@ export default function DisputesPage() {
                     <p className="text-xs text-muted-foreground mt-1">Job ID: {d.job_id.slice(0, 8)}…</p>
                   </div>
                   {d.status === 'open' && (
-                    <Button size="sm" variant="outline" onClick={() => { setSelected(d); setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none'); }}>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setSelected(d);
+                      // Pre-select based on customer preference, fallback to wallet_credit for refund requests
+                      if (d.preferred_refund_type === 'cash_refund') setRefundType('partial');
+                      else if (d.preferred_refund_type === 'wallet_credit') setRefundType('wallet_credit');
+                      else setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none');
+                    }}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Resolve
                     </Button>
                   )}
