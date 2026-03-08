@@ -40,7 +40,26 @@ export function useAllDisputes() {
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Dispute[];
+      if (!data || data.length === 0) return [];
+
+      // Fetch profiles for all participants
+      const userIds = [
+        ...new Set([
+          ...data.map((d) => d.customer_id),
+          ...data.filter((d) => d.artisan_id).map((d) => d.artisan_id as string),
+        ])
+      ];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', userIds);
+      const profileMap = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]));
+
+      return data.map((d) => ({
+        ...d,
+        customer_profile: profileMap[d.customer_id] || null,
+        artisan_profile: d.artisan_id ? (profileMap[d.artisan_id] || null) : null,
+      })) as (Dispute & { customer_profile: { full_name: string; phone: string } | null; artisan_profile: { full_name: string; phone: string } | null })[];
     },
   });
 }
