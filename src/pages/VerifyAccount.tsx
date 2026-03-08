@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Hammer, Upload, CheckCircle, FileText, AlertCircle, Loader2, X, Image } from 'lucide-react';
+import { Award, Upload, CheckCircle, FileText, Loader2, X, Image } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UploadedFile {
@@ -20,7 +20,7 @@ const MAX_SIZE_MB = 10;
 
 const VerifyAccount = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -30,9 +30,12 @@ const VerifyAccount = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const requiredDocs = profile?.role === 'artisan'
-    ? ['Government-issued ID (NIN, Passport, Drivers License)', 'Proof of skill / certification (if available)']
-    : ['Government-issued ID (NIN, Passport, Drivers License)'];
+  // Redirect customers immediately — this page is only for artisans
+  useEffect(() => {
+    if (!profileLoading && profile && profile.role !== 'artisan') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [profile, profileLoading, navigate]);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || !user) return;
@@ -52,7 +55,7 @@ const VerifyAccount = () => {
       setUploadProgress(0);
 
       const ext = file.name.split('.').pop();
-      const path = `verification/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `certificates/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error } = await supabase.storage
         .from('verification-docs')
@@ -78,18 +81,15 @@ const VerifyAccount = () => {
   const handleSubmit = async () => {
     if (!user || !profile) return;
     if (uploadedFiles.length === 0) {
-      toast.error('Please upload at least one verification document');
+      toast.error('Please upload at least one certificate');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Save attachment records tied to the submission
-      const submissionTable = profile.role === 'artisan' ? 'artisan_submissions' : 'client_submissions';
-
-      // Find the most recent submission for this user (by email, created during signup)
+      // Find the most recent artisan submission for this user
       const { data: submission } = await supabase
-        .from(submissionTable)
+        .from('artisan_submissions')
         .select('id')
         .eq('email', user.email as string)
         .order('created_at', { ascending: false })
@@ -99,7 +99,7 @@ const VerifyAccount = () => {
       if (submission) {
         const attachments = uploadedFiles.map(f => ({
           submission_id: submission.id,
-          submission_type: profile.role === 'artisan' ? 'artisan' : 'client',
+          submission_type: 'artisan',
           file_path: f.path,
           file_name: f.name,
           file_type: f.type,
@@ -107,8 +107,8 @@ const VerifyAccount = () => {
         await supabase.from('submission_attachments').insert(attachments);
       }
 
-      toast.success("Documents submitted! Your account is under review. We'll notify you once approved.");
-      navigate(profile.role === 'artisan' ? '/artisan/dashboard' : '/dashboard');
+      toast.success("Certificate submitted! Our team will review your profile shortly.");
+      navigate('/artisan/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to submit';
       toast.error(msg);
@@ -118,9 +118,8 @@ const VerifyAccount = () => {
   };
 
   const handleSkip = () => {
-    toast.info('You can submit documents later from your dashboard');
-    if (profile?.role === 'artisan') navigate('/artisan/dashboard');
-    else navigate('/dashboard');
+    toast.info('You can upload your certificate anytime from your Profile page');
+    navigate('/artisan/dashboard');
   };
 
   if (profileLoading) {
@@ -137,25 +136,27 @@ const VerifyAccount = () => {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg">
-              <Hammer className="h-7 w-7 text-primary-foreground" />
+              <Award className="h-7 w-7 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-display">Verify Your Account</CardTitle>
+          <CardTitle className="text-2xl font-display">Upload Your Certificate</CardTitle>
           <CardDescription>
-            Upload your verification documents. Your account will be reviewed and approved by our team before you can start.
+            Optionally upload a certificate or proof of skill to boost trust with customers. You can always do this later from your profile.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-5">
-          {/* Required docs list */}
+          {/* What to upload */}
           <div className="rounded-lg bg-muted/50 border border-border p-4 space-y-2">
-            <p className="text-sm font-medium text-foreground">Required Documents:</p>
-            {requiredDocs.map((doc, i) => (
-              <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <FileText className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>{doc}</span>
-              </div>
-            ))}
+            <p className="text-sm font-medium text-foreground">What you can upload:</p>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Award className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <span>Trade certificate or qualification document</span>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <FileText className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <span>Training completion certificate or letter</span>
+            </div>
             <p className="text-xs text-muted-foreground mt-2">Accepted formats: JPG, PNG, PDF (max {MAX_SIZE_MB}MB each)</p>
           </div>
 
@@ -220,18 +221,10 @@ const VerifyAccount = () => {
             </div>
           )}
 
-          {/* Info banner */}
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20 text-sm">
-            <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-            <p className="text-muted-foreground">
-              Your account will remain <strong>pending</strong> until our team reviews and approves your documents. This usually takes 1–2 business days.
-            </p>
-          </div>
-
           {/* Actions */}
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={handleSkip} className="flex-1">
-              Submit Later
+              Skip for Now
             </Button>
             <Button
               type="button"
@@ -242,10 +235,13 @@ const VerifyAccount = () => {
               {submitting ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
               ) : (
-                'Submit Documents'
+                'Submit Certificate'
               )}
             </Button>
           </div>
+          <p className="text-center text-xs text-muted-foreground">
+            This is completely optional. You can upload certificates anytime from your Profile.
+          </p>
         </CardContent>
       </Card>
     </div>
