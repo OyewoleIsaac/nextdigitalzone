@@ -255,7 +255,21 @@ const CustomerDashboard = () => {
             <Card><CardContent className="py-8 text-center text-muted-foreground">No active jobs. Request a service to get started!</CardContent></Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {activeJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />)}
+              {activeJobs.map((job) => (
+                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
+                  {/* Dispute button for assigned/in-progress jobs */}
+                  {['assigned', 'inspection_paid', 'quoted', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed', 'disputed'].includes(job.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full mt-2 text-destructive border-destructive/30 hover:bg-destructive/5"
+                      onClick={(e) => { e.stopPropagation(); setDisputeJob(job); }}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 mr-1.5" /> File a Dispute
+                    </Button>
+                  )}
+                </JobCard>
+              ))}
             </div>
           )}
         </div>
