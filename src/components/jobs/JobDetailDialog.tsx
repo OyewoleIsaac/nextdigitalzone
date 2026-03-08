@@ -107,19 +107,19 @@ export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetail
                 {hasBreakdown ? (
                   <>
                     {materialCost && (
-                      <div className="flex justify-between items-center py-1 rounded-md px-2 bg-blue-500/10">
+                      <div className="flex justify-between items-center py-1 rounded-md px-2 bg-secondary/60">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <Package className="h-3.5 w-3.5 text-blue-500" /> Materials Cost
+                          <Package className="h-3.5 w-3.5 text-primary" /> Materials Cost
                         </span>
-                        <strong className="text-blue-600 dark:text-blue-400">₦{(materialCost / 100).toLocaleString()}</strong>
+                        <strong className="text-foreground">₦{(materialCost / 100).toLocaleString()}</strong>
                       </div>
                     )}
                     {workmanshipCost && (
-                      <div className="flex justify-between items-center py-1 rounded-md px-2 bg-orange-500/10">
+                      <div className="flex justify-between items-center py-1 rounded-md px-2 bg-accent/60">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <Wrench className="h-3.5 w-3.5 text-orange-500" /> Workmanship Cost
+                          <Wrench className="h-3.5 w-3.5 text-accent-foreground" /> Workmanship Cost
                         </span>
-                        <strong className="text-orange-600 dark:text-orange-400">₦{(workmanshipCost / 100).toLocaleString()}</strong>
+                        <strong className="text-foreground">₦{(workmanshipCost / 100).toLocaleString()}</strong>
                       </div>
                     )}
                     {(materialCost && workmanshipCost) && (
