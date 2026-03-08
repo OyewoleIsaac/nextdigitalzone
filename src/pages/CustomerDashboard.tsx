@@ -154,12 +154,25 @@ const CustomerDashboard = () => {
       </header>
 
       <main className="section-container py-8">
+        {/* Verification Banner */}
+        {profile && !profile.is_verified && (
+          <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/40 bg-warning/10 mb-6">
+            <Shield className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-warning">Account Pending Verification</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Your account is under review. You can browse but cannot request services until an admin verifies your identity (usually 1–2 business days).
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Welcome, {profile?.full_name}!</h1>
             <p className="text-muted-foreground mt-1">What would you like to do today?</p>
           </div>
-          <Button onClick={() => navigate('/request-service')}>
+          <Button onClick={() => navigate('/request-service')} disabled={!profile?.is_verified}>
             <Search className="h-4 w-4 mr-2" /> Request a Service
           </Button>
         </div>
