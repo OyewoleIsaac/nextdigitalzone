@@ -7,6 +7,10 @@ export interface Category {
   slug: string;
   description: string | null;
   is_active: boolean;
+  requires_inspection: boolean;
+  default_inspection_fee: number;
+  is_agency_job: boolean;
+  default_agency_fee: number;
   created_at: string;
   updated_at: string;
 }

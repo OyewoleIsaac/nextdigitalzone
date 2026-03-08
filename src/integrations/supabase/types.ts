@@ -223,28 +223,40 @@ export type Database = {
       categories: {
         Row: {
           created_at: string
+          default_agency_fee: number
+          default_inspection_fee: number
           description: string | null
           id: string
           is_active: boolean
+          is_agency_job: boolean
           name: string
+          requires_inspection: boolean
           slug: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          default_agency_fee?: number
+          default_inspection_fee?: number
           description?: string | null
           id?: string
           is_active?: boolean
+          is_agency_job?: boolean
           name: string
+          requires_inspection?: boolean
           slug: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          default_agency_fee?: number
+          default_inspection_fee?: number
           description?: string | null
           id?: string
           is_active?: boolean
+          is_agency_job?: boolean
           name?: string
+          requires_inspection?: boolean
           slug?: string
           updated_at?: string
         }
@@ -414,7 +426,10 @@ export type Database = {
         Row: {
           address: string
           admin_assigner_id: string | null
+          agency_commission_percent: number | null
+          agreed_salary: number | null
           artisan_id: string | null
+          artisan_offer_status: string | null
           assigned_by: string | null
           cancellation_reason: string | null
           category_id: string | null
@@ -428,6 +443,8 @@ export type Database = {
           inspection_fee: number | null
           latitude: number
           longitude: number
+          material_cost: number | null
+          materials_allocated_at: string | null
           photo_after: string | null
           photo_before: string | null
           quoted_amount: number | null
@@ -435,11 +452,16 @@ export type Database = {
           status: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at: string
+          workmanship_cost: number | null
+          workmanship_released_at: string | null
         }
         Insert: {
           address: string
           admin_assigner_id?: string | null
+          agency_commission_percent?: number | null
+          agreed_salary?: number | null
           artisan_id?: string | null
+          artisan_offer_status?: string | null
           assigned_by?: string | null
           cancellation_reason?: string | null
           category_id?: string | null
@@ -453,6 +475,8 @@ export type Database = {
           inspection_fee?: number | null
           latitude: number
           longitude: number
+          material_cost?: number | null
+          materials_allocated_at?: string | null
           photo_after?: string | null
           photo_before?: string | null
           quoted_amount?: number | null
@@ -460,11 +484,16 @@ export type Database = {
           status?: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at?: string
+          workmanship_cost?: number | null
+          workmanship_released_at?: string | null
         }
         Update: {
           address?: string
           admin_assigner_id?: string | null
+          agency_commission_percent?: number | null
+          agreed_salary?: number | null
           artisan_id?: string | null
+          artisan_offer_status?: string | null
           assigned_by?: string | null
           cancellation_reason?: string | null
           category_id?: string | null
@@ -478,6 +507,8 @@ export type Database = {
           inspection_fee?: number | null
           latitude?: number
           longitude?: number
+          material_cost?: number | null
+          materials_allocated_at?: string | null
           photo_after?: string | null
           photo_before?: string | null
           quoted_amount?: number | null
@@ -485,6 +516,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["job_status"]
           title?: string
           updated_at?: string
+          workmanship_cost?: number | null
+          workmanship_released_at?: string | null
         }
         Relationships: [
           {
@@ -492,6 +525,47 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          job_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          job_id?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          job_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]

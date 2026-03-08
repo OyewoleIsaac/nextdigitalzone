@@ -51,7 +51,7 @@ export function useCustomerJobs() {
       if (!user) return [];
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug, requires_inspection, is_agency_job, default_inspection_fee, default_agency_fee)')
         .eq('customer_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -61,7 +61,7 @@ export function useCustomerJobs() {
   });
 }
 
-// Artisan: fetch assigned jobs
+// Artisan: fetch assigned jobs (includes customer contact info)
 export function useArtisanJobs() {
   const { user } = useAuth();
   return useQuery({
@@ -74,30 +74,57 @@ export function useArtisanJobs() {
         .eq('artisan_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Job[];
+
+      // Enrich with customer profiles separately
+      const jobs = data as Job[];
+      if (jobs.length === 0) return jobs;
+      const customerIds = [...new Set(jobs.map(j => j.customer_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone, address')
+        .in('user_id', customerIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+      return jobs.map(j => ({ ...j, customer_profile: profileMap[j.customer_id] || null })) as Job[];
     },
     enabled: !!user,
   });
 }
 
-// Admin: fetch all jobs (excludes 'draft' unless explicitly filtered)
+// Admin: fetch all jobs with customer + artisan profiles
 export function useAllJobs(statusFilter?: string) {
   return useQuery({
     queryKey: ['all-jobs', statusFilter],
     queryFn: async () => {
       let query = supabase
         .from('jobs')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug, requires_inspection, is_agency_job, default_inspection_fee, default_agency_fee)')
         .order('created_at', { ascending: false });
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter as any);
       } else {
-        // Exclude draft jobs from admin view — they haven't paid yet
         query = query.neq('status', 'draft' as any);
       }
       const { data, error } = await query;
       if (error) throw error;
-      return data as Job[];
+      const jobs = data as Job[];
+      if (jobs.length === 0) return jobs;
+
+      // Enrich with customer + artisan profiles
+      const customerIds = [...new Set(jobs.map(j => j.customer_id))];
+      const artisanIds = [...new Set(jobs.filter(j => j.artisan_id).map(j => j.artisan_id as string))];
+      const allUserIds = [...new Set([...customerIds, ...artisanIds])];
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone, address, is_verified')
+        .in('user_id', allUserIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+
+      return jobs.map(j => ({
+        ...j,
+        customer_profile: profileMap[j.customer_id] || null,
+        artisan_profile: j.artisan_id ? (profileMap[j.artisan_id] || null) : null,
+      })) as Job[];
     },
   });
 }

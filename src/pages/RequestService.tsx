@@ -3,9 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useCategories } from '@/hooks/useCategories';
+import type { Category } from '@/lib/types';
 import { useCreateJob } from '@/hooks/useJobs';
 import { useInitializePayment } from '@/hooks/usePayments';
-import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,13 +13,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock, Wallet } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock, Search, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
 
 const LeafletMap = lazy(() => import('@/components/maps/LeafletMap'));
-
-const INSPECTION_FEE = 500000; // ₦5,000 in kobo
 
 const RequestService = () => {
   const navigate = useNavigate();
@@ -28,8 +27,6 @@ const RequestService = () => {
   const { data: categories } = useCategories();
   const createJob = useCreateJob();
   const initPayment = useInitializePayment();
-  const { balance: walletBalance } = useWallet();
-  const payWithWallet = usePayWithWalletCredit();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,7 +45,6 @@ const RequestService = () => {
     if (!authLoading && !user) navigate('/login');
   }, [user, authLoading, navigate]);
 
-  // Pre-fill from registered address
   useEffect(() => {
     if (profile && addressOption === 'registered') {
       setAddress(profile.address || '');
@@ -57,6 +53,16 @@ const RequestService = () => {
       setAddressVerified(!!(profile.address && profile.latitude));
     }
   }, [profile, addressOption]);
+
+  const selectedCategory: Category | undefined = categories?.find(c => c.id === categoryId);
+  const requiresPayment = selectedCategory?.requires_inspection || selectedCategory?.is_agency_job;
+  const paymentAmount = selectedCategory?.requires_inspection
+    ? selectedCategory.default_inspection_fee
+    : selectedCategory?.is_agency_job
+      ? selectedCategory.default_agency_fee
+      : 0;
+  const paymentLabel = selectedCategory?.requires_inspection ? 'Inspection Fee' : 'Agency Fee';
+  const paymentType: 'inspection_fee' = 'inspection_fee'; // both map to inspection_fee for now
 
   const handleNewAddressChange = (addr: string, coords: { lat: number; lng: number }) => {
     setAddress(addr);
@@ -74,7 +80,6 @@ const RequestService = () => {
     }
 
     try {
-      // Create the job as 'draft' — NOT visible to admin yet
       const job = await createJob.mutateAsync({
         customer_id: user.id,
         category_id: categoryId,
@@ -85,24 +90,31 @@ const RequestService = () => {
         longitude: lng,
       });
 
-      setPendingJobId((job as any).id);
+      const jobId = (job as any).id;
+      setPendingJobId(jobId);
       setPendingJobTitle(title);
       setPendingJobAddress(address);
-      setStep('payment');
+
+      if (requiresPayment && paymentAmount > 0) {
+        setStep('payment');
+      } else {
+        // No fee required — submit directly, job stays draft until admin activates
+        toast.success('Service request submitted! We will review and get back to you shortly.');
+        navigate('/dashboard');
+      }
     } catch {
       // error handled by hook
     }
   };
 
-  const handlePayInspectionFee = async () => {
+  const handlePayFee = async () => {
     if (!pendingJobId) return;
     try {
       const result = await initPayment.mutateAsync({
         job_id: pendingJobId,
-        payment_type: 'inspection_fee',
-        amount: INSPECTION_FEE,
+        payment_type: paymentType,
+        amount: paymentAmount,
       });
-      // Redirect to Paystack payment page
       window.location.href = result.authorization_url;
     } catch {
       // handled by hook
@@ -110,8 +122,7 @@ const RequestService = () => {
   };
 
   const handlePayLater = () => {
-    // Job stays as 'draft' in the DB. Customer can pay from their dashboard later.
-    toast.info('Request saved as draft. Pay the booking fee from your dashboard to activate it.');
+    toast.info('Request saved as draft. Pay the fee from your dashboard to activate it.');
     navigate('/dashboard');
   };
 
@@ -123,7 +134,6 @@ const RequestService = () => {
     );
   }
 
-  // Block unverified customers
   if (profile && !profile.is_verified) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -134,7 +144,7 @@ const RequestService = () => {
             </div>
             <h2 className="text-xl font-bold mb-2">Account Pending Verification</h2>
             <p className="text-muted-foreground mb-6">
-              Your account is under review by our team. You'll be able to request services once your identity is verified. This usually takes 1–2 business days.
+              Your account is under review. You'll be able to request services once your identity is verified.
             </p>
             <Button variant="outline" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
@@ -156,7 +166,7 @@ const RequestService = () => {
           <Card>
             <CardHeader>
               <CardTitle>Request a Service</CardTitle>
-              <CardDescription>Describe what you need and we'll match you with a nearby skilled artisan.</CardDescription>
+              <CardDescription>Describe what you need and we'll match you with a skilled artisan.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleFormSubmit} className="space-y-5">
@@ -171,6 +181,28 @@ const RequestService = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {/* Category type badge */}
+                  {selectedCategory && (
+                    <div className="flex gap-2 flex-wrap">
+                      {selectedCategory.requires_inspection && (
+                        <Badge variant="outline" className="text-xs border-primary/40 text-primary">
+                          <Search className="h-2.5 w-2.5 mr-1" />
+                          Inspection fee: ₦{(selectedCategory.default_inspection_fee / 100).toLocaleString()} required
+                        </Badge>
+                      )}
+                      {selectedCategory.is_agency_job && (
+                        <Badge variant="outline" className="text-xs border-accent/40 text-accent">
+                          <Briefcase className="h-2.5 w-2.5 mr-1" />
+                          Agency fee: ₦{(selectedCategory.default_agency_fee / 100).toLocaleString()} required
+                        </Badge>
+                      )}
+                      {!selectedCategory.requires_inspection && !selectedCategory.is_agency_job && (
+                        <Badge variant="outline" className="text-xs">
+                          No upfront fee required
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -185,10 +217,9 @@ const RequestService = () => {
                   <Textarea id="description" placeholder="Provide details about what you need done..." value={description} onChange={(e) => setDescription(e.target.value)} rows={4} required />
                 </div>
 
-                {/* Address selection */}
+                {/* Address */}
                 <div className="space-y-3">
                   <Label>Service Location <span className="text-destructive">*</span></Label>
-
                   <RadioGroup
                     value={addressOption}
                     onValueChange={(v) => setAddressOption(v as 'registered' | 'new')}
@@ -205,7 +236,6 @@ const RequestService = () => {
                         </p>
                       </label>
                     </div>
-
                     <div className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${addressOption === 'new' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
                       <RadioGroupItem value="new" id="addr-new" className="mt-0.5" />
                       <label htmlFor="addr-new" className="cursor-pointer flex-1">
@@ -217,30 +247,14 @@ const RequestService = () => {
                     </div>
                   </RadioGroup>
 
-                  {/* Show map / city picker for new address */}
                   {addressOption === 'new' && (
                     <div className="pt-1">
-                      <CityAddressField
-                        value={address}
-                        coords={{ lat, lng }}
-                        onChange={handleNewAddressChange}
-                        role={null}
-                      />
+                      <CityAddressField value={address} coords={{ lat, lng }} onChange={handleNewAddressChange} role={null} />
                       <div className="mt-3">
                         <Label className="text-xs text-muted-foreground mb-2 block">Pin on Map (optional)</Label>
-                        <Suspense fallback={
-                          <div className="h-[220px] rounded-lg border bg-muted/30 flex items-center justify-center">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                          </div>
-                        }>
+                        <Suspense fallback={<div className="h-[220px] rounded-lg border bg-muted/30 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                           <div className="h-[220px] rounded-lg border overflow-hidden">
-                            <LeafletMap
-                              position={{ lat, lng }}
-                              onLocationSelect={(newLat, newLng) => {
-                                setLat(newLat);
-                                setLng(newLng);
-                              }}
-                            />
+                            <LeafletMap position={{ lat, lng }} onLocationSelect={(newLat, newLng) => { setLat(newLat); setLng(newLng); }} />
                           </div>
                         </Suspense>
                       </div>
@@ -248,26 +262,36 @@ const RequestService = () => {
                   )}
                 </div>
 
-                {/* Inspection fee info banner */}
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-1.5">
-                  <div className="flex items-center gap-2 font-medium text-sm">
-                    <CreditCard className="h-4 w-4 text-primary" />
-                    ₦5,000 Booking / Inspection Fee Required
+                {/* Fee notice based on category */}
+                {requiresPayment && selectedCategory && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-1.5">
+                    <div className="flex items-center gap-2 font-medium text-sm">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      ₦{(paymentAmount / 100).toLocaleString()} {paymentLabel} Required
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedCategory.requires_inspection
+                        ? 'This service category requires a physical inspection. Pay the inspection fee to activate your request and schedule an artisan visit.'
+                        : 'This is an agency/placement job. Pay the agency fee to submit your request for staff placement.'}
+                    </p>
+                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      Your request will only be sent to admin after payment is confirmed.
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    A one-time <strong>₦5,000 booking fee</strong> is required to confirm your request and dispatch an artisan for the initial inspection visit.
-                  </p>
-                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                    <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                    Your request will only be sent to admin after payment is confirmed.
-                  </div>
-                </div>
+                )}
 
-                <Button type="submit" className="w-full" disabled={createJob.isPending || !categoryId || !addressVerified}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createJob.isPending || !categoryId || !addressVerified}
+                >
                   {createJob.isPending ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
-                  ) : (
+                  ) : requiresPayment ? (
                     <><Send className="h-4 w-4 mr-2" />Submit & Proceed to Payment</>
+                  ) : (
+                    <><Send className="h-4 w-4 mr-2" />Submit Request</>
                   )}
                 </Button>
               </form>
@@ -275,15 +299,15 @@ const RequestService = () => {
           </Card>
         )}
 
-        {step === 'payment' && (
+        {step === 'payment' && selectedCategory && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-primary" />
-                Pay Booking Fee to Activate Request
+                Pay {paymentLabel} to Activate Request
               </CardTitle>
               <CardDescription>
-                Your request has been saved as a <strong>draft</strong>. Pay the ₦5,000 booking fee to send it to an artisan.
+                Your request has been saved. Pay the {paymentLabel.toLowerCase()} to send it to our team.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -293,23 +317,35 @@ const RequestService = () => {
                   <span className="font-medium">{pendingJobTitle}</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Category</span>
+                  <span className="font-medium">{selectedCategory.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Location</span>
                   <span className="font-medium text-right max-w-[200px] truncate">{pendingJobAddress}</span>
                 </div>
                 <div className="flex justify-between text-sm border-t border-border pt-3 font-bold">
-                  <span>Booking / Inspection Fee</span>
-                  <span className="text-primary">₦5,000</span>
+                  <span>{paymentLabel}</span>
+                  <span className="text-primary">₦{(paymentAmount / 100).toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-start gap-2">
-                  <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>This fee covers the artisan's initial visit to assess and quote the job.</span>
-                </div>
+                {selectedCategory.requires_inspection && (
+                  <div className="flex items-start gap-2">
+                    <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>This fee covers the artisan's initial visit to assess and quote the job. No additional inspection fee will be charged.</span>
+                  </div>
+                )}
+                {selectedCategory.is_agency_job && (
+                  <div className="flex items-start gap-2">
+                    <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>This agency fee covers our staff placement service. A 30% commission of the agreed first salary will apply upon successful placement.</span>
+                  </div>
+                )}
                 <div className="flex items-start gap-2">
                   <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>If no artisan responds within 24 hours, open a dispute from your dashboard to request a full refund.</span>
+                  <span>If we cannot fulfil your request within 24 hours, you can open a dispute for a full refund.</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Clock className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
@@ -317,19 +353,14 @@ const RequestService = () => {
                 </div>
               </div>
 
-              <Button className="w-full" onClick={handlePayInspectionFee} disabled={initPayment.isPending}>
+              <Button className="w-full" onClick={handlePayFee} disabled={initPayment.isPending}>
                 {initPayment.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirecting to payment...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirecting...</>
                 ) : (
-                  <><CreditCard className="h-4 w-4 mr-2" />Pay ₦5,000 Now & Activate Request</>
+                  <><CreditCard className="h-4 w-4 mr-2" />Pay ₦{(paymentAmount / 100).toLocaleString()} Now</>
                 )}
               </Button>
-
-              <Button
-                variant="outline"
-                className="w-full text-muted-foreground"
-                onClick={handlePayLater}
-              >
+              <Button variant="outline" className="w-full text-muted-foreground" onClick={handlePayLater}>
                 <Clock className="h-4 w-4 mr-2" />
                 Save as Draft — Pay Later from Dashboard
               </Button>
