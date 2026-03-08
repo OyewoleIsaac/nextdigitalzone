@@ -1,32 +1,43 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAllDisputes, useResolveDispute } from '@/hooks/useDisputes';
-import { useProcessRefund } from '@/hooks/useDisputes';
+import { useAllDisputes, useProcessRefund } from '@/hooks/useDisputes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Dispute } from '@/hooks/useDisputes';
 
 const REFUND_OPTIONS = [
   {
+    value: 'wallet_credit',
+    label: '💳 Platform Wallet Credit — ₦5,000',
+    description: 'Issue full ₦5,000 as platform credit. Customer keeps the full amount and can use it on their next booking. ✅ Zero loss to admin — no Paystack fees.',
+    badge: 'Recommended',
+    badgeColor: 'bg-green-100 text-green-700',
+  },
+  {
     value: 'partial',
-    label: 'Partial Refund — ₦4,700',
-    description: 'Refund ₦4,700 (deduct ₦300 processing fee). Recommended for 24hr no-response cases.',
+    label: 'Partial Cash Refund — ₦4,700',
+    description: 'Refund ₦4,700 back to card/bank (₦300 deducted to cover Paystack transaction fee). Use when customer insists on cash refund.',
+    badge: null,
+    badgeColor: '',
   },
   {
     value: 'full',
-    label: 'Full Refund — ₦5,000',
-    description: 'Refund the full ₦5,000. Admin absorbs Paystack fee (~₦175). Use for platform errors.',
+    label: 'Full Cash Refund — ₦5,000',
+    description: 'Refund the full ₦5,000 to original payment method. Admin absorbs Paystack fee (~₦175). Use only for platform errors.',
+    badge: 'Admin absorbs fee',
+    badgeColor: 'bg-orange-100 text-orange-700',
   },
   {
     value: 'none',
-    label: 'No Refund',
-    description: 'Close dispute without issuing a refund.',
+    label: 'No Refund — Close Dispute',
+    description: 'Close the dispute without issuing any refund. Use when the claim is invalid or service was rendered.',
+    badge: null,
+    badgeColor: '',
   },
 ];
 
@@ -35,7 +46,7 @@ export default function DisputesPage() {
   const processRefund = useProcessRefund();
   const [selected, setSelected] = useState<Dispute | null>(null);
   const [resolution, setResolution] = useState('');
-  const [refundType, setRefundType] = useState<'partial' | 'full' | 'none'>('partial');
+  const [refundType, setRefundType] = useState<'wallet_credit' | 'partial' | 'full' | 'none'>('wallet_credit');
 
   const handleResolve = async () => {
     if (!selected) return;
@@ -46,20 +57,20 @@ export default function DisputesPage() {
     });
     setSelected(null);
     setResolution('');
-    setRefundType('partial');
+    setRefundType('wallet_credit');
   };
 
   const statusColor = (s: string) =>
     s === 'open' ? 'destructive' : s === 'resolved' ? 'default' : 'secondary';
 
   const isRefundRequest = (reason: string) =>
-    reason.toLowerCase().includes('refund') || reason.toLowerCase().includes('no artisan');
+    reason.toLowerCase().includes('refund') || reason.toLowerCase().includes('no artisan') || reason.toLowerCase().includes('no response');
 
   return (
     <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Dispute Management</h1>
-        <p className="text-muted-foreground">Review, resolve disputes, and issue refunds where applicable.</p>
+        <p className="text-muted-foreground">Review, resolve disputes, and issue refunds or wallet credits.</p>
       </div>
 
       {isLoading ? (
@@ -82,7 +93,7 @@ export default function DisputesPage() {
                       <AlertTriangle className="h-4 w-4 text-destructive" />
                       <Badge variant={statusColor(d.status)} className="capitalize">{d.status}</Badge>
                       {isRefundRequest(d.reason) && (
-                        <Badge variant="outline" className="text-warning border-warning/50 text-xs">
+                        <Badge variant="outline" className="text-xs border-yellow-400/50 text-yellow-600">
                           <DollarSign className="h-3 w-3 mr-1" /> Refund Request
                         </Badge>
                       )}
@@ -95,7 +106,7 @@ export default function DisputesPage() {
                     <p className="text-xs text-muted-foreground mt-1">Job ID: {d.job_id.slice(0, 8)}…</p>
                   </div>
                   {d.status === 'open' && (
-                    <Button size="sm" variant="outline" onClick={() => { setSelected(d); setRefundType(isRefundRequest(d.reason) ? 'partial' : 'none'); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setSelected(d); setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none'); }}>
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Resolve
                     </Button>
                   )}
@@ -109,7 +120,7 @@ export default function DisputesPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Resolve Dispute & Issue Refund</DialogTitle>
+            <DialogTitle>Resolve Dispute</DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4 pt-2">
@@ -135,19 +146,31 @@ export default function DisputesPage() {
                           : 'border-border hover:border-primary/40'
                       }`}
                     >
-                      <p className="text-sm font-medium">{opt.label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium flex-1">{opt.label}</p>
+                        {opt.badge && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${opt.badgeColor}`}>
+                            {opt.badge}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {refundType !== 'none' && (
+              {/* Context note based on selection */}
+              {refundType === 'wallet_credit' && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">
+                  <Wallet className="h-4 w-4 shrink-0" />
+                  <span>₦5,000 will be added to the customer's platform wallet. No Paystack fees — admin retains the full amount from the original transaction.</span>
+                </div>
+              )}
+              {(refundType === 'partial' || refundType === 'full') && (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-primary">
                   <DollarSign className="h-4 w-4 shrink-0" />
-                  <span>
-                    Paystack refund API will be called. Amount will be returned to the customer's original payment method.
-                  </span>
+                  <span>Paystack refund API will be called. Amount returns to the customer's original payment method within 3–5 business days.</span>
                 </div>
               )}
 
@@ -173,8 +196,16 @@ export default function DisputesPage() {
                 >
                   {processRefund.isPending
                     ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    : <RefreshCw className="h-4 w-4 mr-2" />}
-                  {refundType === 'none' ? 'Close Dispute' : `Issue ₦${refundType === 'full' ? '5,000' : '4,700'} Refund`}
+                    : refundType === 'wallet_credit'
+                      ? <Wallet className="h-4 w-4 mr-2" />
+                      : <RefreshCw className="h-4 w-4 mr-2" />}
+                  {refundType === 'none'
+                    ? 'Close Dispute'
+                    : refundType === 'wallet_credit'
+                      ? 'Issue ₦5,000 Wallet Credit'
+                      : refundType === 'full'
+                        ? 'Refund ₦5,000 to Card'
+                        : 'Refund ₦4,700 to Card'}
                 </Button>
               </div>
             </div>
