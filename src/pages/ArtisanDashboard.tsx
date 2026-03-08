@@ -16,6 +16,7 @@ import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { useDisputeForJob } from '@/hooks/useDisputes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
