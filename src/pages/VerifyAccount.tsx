@@ -127,6 +127,7 @@ const VerifyAccount = () => {
   };
 
   const handleSkip = () => {
+    localStorage.removeItem('pending_artisan_submission_id');
     toast.info('You can upload your certificate anytime from your Profile page');
     navigate('/artisan/dashboard');
   };
