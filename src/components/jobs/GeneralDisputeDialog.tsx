@@ -96,8 +96,8 @@ export function GeneralDisputeDialog({ open, onOpenChange, userRole = 'customer'
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
             File a Complaint
@@ -119,74 +119,76 @@ export function GeneralDisputeDialog({ open, onOpenChange, userRole = 'customer'
             </Button>
           </div>
         ) : (
-          <div className="space-y-5 pt-1">
-            {/* Category picker */}
-            <div>
-              <p className="text-sm font-semibold mb-2">What type of issue is this?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {ISSUE_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setCategory(cat.value)}
-                    className={`text-left text-xs px-3 py-2.5 rounded-lg border transition-colors font-medium ${
-                      category === cat.value
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-border hover:border-primary/40 hover:bg-muted/50'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Preset reasons */}
-            {category && (
+          <div className="overflow-y-auto flex-1 pr-1">
+            <div className="space-y-5 pt-1 pb-2">
+              {/* Category picker */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Quick select a reason:</p>
-                <div className="space-y-1.5">
-                  {presets.map((preset, i) => (
+                <p className="text-sm font-semibold mb-2">What type of issue is this?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ISSUE_CATEGORIES.map((cat) => (
                     <button
-                      key={i}
+                      key={cat.value}
                       type="button"
-                      onClick={() => setReason(preset)}
-                      className={`w-full text-left text-xs px-3 py-2 rounded-md border transition-colors ${
-                        reason === preset
+                      onClick={() => setCategory(cat.value)}
+                      className={`text-left text-xs px-3 py-2.5 rounded-lg border transition-colors font-medium ${
+                        category === cat.value
                           ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
                       }`}
                     >
-                      {preset}
+                      {cat.label}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Free-text reason */}
-            <div>
-              <p className="text-sm font-medium mb-1 flex items-center gap-1.5">
-                <MessageSquare className="h-4 w-4" />
-                Describe the issue:
-              </p>
-              <Textarea
-                placeholder="Provide as much detail as possible..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={4}
-              />
+              {/* Preset reasons */}
+              {category && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Quick select a reason:</p>
+                  <div className="space-y-1.5">
+                    {presets.map((preset, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setReason(preset)}
+                        className={`w-full text-left text-xs px-3 py-2 rounded-md border transition-colors ${
+                          reason === preset
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Free-text reason */}
+              <div>
+                <p className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                  <MessageSquare className="h-4 w-4" />
+                  Describe the issue:
+                </p>
+                <Textarea
+                  placeholder="Provide as much detail as possible..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                />
+              </div>
+
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={handleSubmit}
+                disabled={!reason.trim() || !category || submit.isPending}
+              >
+                {submit.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Submit Complaint
+              </Button>
             </div>
-
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={handleSubmit}
-              disabled={!reason.trim() || !category || submit.isPending}
-            >
-              {submit.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Submit Complaint
-            </Button>
           </div>
         )}
       </DialogContent>
