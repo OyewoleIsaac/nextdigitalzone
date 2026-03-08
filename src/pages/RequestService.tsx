@@ -16,9 +16,7 @@ import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home } from
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
 
-const LeafletMap = lazy(() =>
-  import('@/components/maps/LeafletMap').then((m) => ({ default: m.LeafletMap }))
-);
+const LeafletMap = lazy(() => import('@/components/maps/LeafletMap'));
 
 const INSPECTION_FEE = 500000; // ₦5,000 in kobo
 
