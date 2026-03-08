@@ -5,7 +5,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateJob } from '@/hooks/useJobs';
 import { useInitializePayment } from '@/hooks/usePayments';
-import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock, Wallet } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
 
@@ -28,8 +27,6 @@ const RequestService = () => {
   const { data: categories } = useCategories();
   const createJob = useCreateJob();
   const initPayment = useInitializePayment();
-  const { balance: walletBalance } = useWallet();
-  const payWithWallet = usePayWithWalletCredit();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

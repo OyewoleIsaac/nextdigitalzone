@@ -72,7 +72,7 @@ export function useProcessRefund() {
   return useMutation({
     mutationFn: async (payload: {
       dispute_id: string;
-      refund_type: 'wallet_credit' | 'partial' | 'full' | 'none';
+      refund_type: 'partial' | 'full' | 'none';
       resolution_notes?: string;
     }) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -85,14 +85,11 @@ export function useProcessRefund() {
       return data;
     },
     onSuccess: (_, vars) => {
-      const msg =
-        vars.refund_type === 'none'
-          ? 'Dispute closed. No refund issued.'
-          : vars.refund_type === 'wallet_credit'
-            ? 'Full ₦5,000 issued as platform wallet credit!'
-            : vars.refund_type === 'full'
-              ? 'Full ₦5,000 cash refund issued successfully!'
-              : 'Partial ₦4,700 cash refund issued successfully!';
+      const msg = vars.refund_type === 'none'
+        ? 'Dispute closed. No refund issued.'
+        : vars.refund_type === 'full'
+          ? 'Full ₦5,000 refund issued successfully!'
+          : 'Partial ₦4,700 refund issued successfully!';
       toast.success(msg);
       qc.invalidateQueries({ queryKey: ['all-disputes'] });
       qc.invalidateQueries({ queryKey: ['all-jobs'] });

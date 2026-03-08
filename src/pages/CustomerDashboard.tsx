@@ -5,16 +5,14 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, History } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
 import { DisputeDialog } from '@/components/jobs/DisputeDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
-import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
 
@@ -28,12 +26,9 @@ const CustomerDashboard = () => {
   const addHistory = useAddJobHistory();
   const initPayment = useInitializePayment();
   const releasePayment = useReleasePayment();
-  const { balance: walletBalance, transactions: walletTx } = useWallet();
-  const payWithWallet = usePayWithWalletCredit();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [disputeJob, setDisputeJob] = useState<Job | null>(null);
-  const [showWallet, setShowWallet] = useState(false);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
   useEffect(() => {
@@ -126,17 +121,8 @@ const CustomerDashboard = () => {
               </div>
               <span className="font-display text-xl font-bold">NDZ<span className="text-primary">Marketplace</span></span>
             </Link>
-          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:block">Hi, {profile?.full_name}</span>
-              {walletBalance > 0 && (
-                <button
-                  onClick={() => setShowWallet(!showWallet)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-                >
-                  <Wallet className="h-3.5 w-3.5" />
-                  ₦{(walletBalance / 100).toLocaleString()} credit
-                </button>
-              )}
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-1" /> Profile
               </Button>
@@ -159,37 +145,6 @@ const CustomerDashboard = () => {
           </Button>
         </div>
 
-        {/* Wallet Panel */}
-        {showWallet && (
-          <Card className="mb-8 border-primary/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-primary" />
-                Platform Wallet
-                <Badge variant="outline" className="ml-auto text-primary border-primary/30">
-                  ₦{(walletBalance / 100).toLocaleString()} available
-                </Badge>
-              </CardTitle>
-              <CardDescription>Credits you can use to pay the booking fee on future service requests.</CardDescription>
-            </CardHeader>
-            {walletTx.length > 0 && (
-              <CardContent className="pt-0">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Transaction History</p>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {walletTx.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between text-xs rounded border p-2">
-                      <span className="text-muted-foreground truncate max-w-[200px]">{tx.description}</span>
-                      <span className={tx.type === 'credit' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                        {tx.type === 'credit' ? '+' : '-'}₦{(Math.abs(tx.amount) / 100).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        )}
-
         {/* Draft Jobs (Unpaid Booking Fee) */}
         {draftJobs.length > 0 && (
           <div className="mb-8">
@@ -203,41 +158,15 @@ const CustomerDashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               {draftJobs.map((job) => (
                 <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                  <div className="flex gap-2 mt-2">
-                    {walletBalance >= 500000 ? (
-                      <>
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          variant="outline"
-                          onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
-                          disabled={initPayment.isPending || payWithWallet.isPending}
-                        >
-                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                          Pay by Card
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          onClick={(e) => { e.stopPropagation(); payWithWallet.mutate({ job_id: job.id, amount: 500000 }); }}
-                          disabled={payWithWallet.isPending || initPayment.isPending}
-                        >
-                          <Wallet className="h-3.5 w-3.5 mr-1.5" />
-                          Pay with Credit
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
-                        disabled={initPayment.isPending}
-                      >
-                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                        Pay ₦5,000 to Activate
-                      </Button>
-                    )}
-                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
+                    disabled={initPayment.isPending}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                    Pay ₦5,000 to Activate
+                  </Button>
                 </JobCard>
               ))}
             </div>
