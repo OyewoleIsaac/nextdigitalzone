@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const statusConfig: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Draft (Unpaid)', className: 'bg-muted text-muted-foreground border-muted-foreground/30' },
   pending: { label: 'Pending', className: 'bg-warning/15 text-warning border-warning/30' },
   assigned: { label: 'Assigned', className: 'bg-primary/15 text-primary border-primary/30' },
   quoted: { label: 'Quoted', className: 'bg-primary/15 text-primary border-primary/30' },

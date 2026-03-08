@@ -26,15 +26,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Use getUser() instead of deprecated getClaims()
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     const { job_id, payment_type, amount } = await req.json();
 
@@ -67,14 +67,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!job.artisan_id) {
-      return new Response(JSON.stringify({ error: "No artisan assigned to this job" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get customer email for Paystack
+    // Get customer profile for email
     const { data: profile } = await supabase
       .from("profiles")
       .select("phone, full_name")
@@ -85,36 +78,40 @@ Deno.serve(async (req) => {
     const commissionAmount = Math.round(amount * commissionPercent / 100);
     const artisanAmount = amount - commissionAmount;
 
+    // For inspection fee payments, artisan_id may not exist yet — use a placeholder
+    const artisanId = job.artisan_id || "00000000-0000-0000-0000-000000000000";
+
     const reference = `ndz_${job_id.slice(0, 8)}_${Date.now()}`;
 
-    // Check for artisan subaccount for split payment
-    const { data: artisanProfile } = await supabase
-      .from("artisan_profiles")
-      .select("paystack_subaccount_code")
-      .eq("user_id", job.artisan_id)
-      .single();
-
-    // Initialize Paystack transaction
+    // Build Paystack payload
     const paystackPayload: Record<string, unknown> = {
-      email: `${profile?.phone || "customer"}@ndz.app`,
-      amount, // already in kobo
+      email: `${profile?.phone || userId.slice(0, 8)}@ndz.app`,
+      amount, // in kobo
       reference,
       callback_url: `${req.headers.get("origin") || "https://nextdigitalzone.lovable.app"}/dashboard?payment=success&job_id=${job_id}`,
       metadata: {
         job_id,
         payment_type,
         customer_id: userId,
-        artisan_id: job.artisan_id,
+        artisan_id: artisanId,
         commission_amount: commissionAmount,
         artisan_amount: artisanAmount,
       },
     };
 
     // If artisan has subaccount, use split payment
-    if (artisanProfile?.paystack_subaccount_code) {
-      paystackPayload.subaccount = artisanProfile.paystack_subaccount_code;
-      paystackPayload.bearer = "account"; // platform bears transaction charges
-      paystackPayload.transaction_charge = commissionAmount; // platform gets this
+    if (job.artisan_id) {
+      const { data: artisanProfile } = await supabase
+        .from("artisan_profiles")
+        .select("paystack_subaccount_code")
+        .eq("user_id", job.artisan_id)
+        .single();
+
+      if (artisanProfile?.paystack_subaccount_code) {
+        paystackPayload.subaccount = artisanProfile.paystack_subaccount_code;
+        paystackPayload.bearer = "account";
+        paystackPayload.transaction_charge = commissionAmount;
+      }
     }
 
     const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -129,17 +126,23 @@ Deno.serve(async (req) => {
     const paystackData = await paystackRes.json();
 
     if (!paystackData.status) {
+      console.error("Paystack error:", paystackData.message);
       return new Response(JSON.stringify({ error: "Failed to initialize payment", details: paystackData.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Insert payment record
-    const { error: insertError } = await supabase.from("payments").insert({
+    // Insert/upsert payment record (use service role to avoid RLS issues on insert)
+    const serviceSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { error: insertError } = await serviceSupabase.from("payments").insert({
       job_id,
       customer_id: userId,
-      artisan_id: job.artisan_id,
+      artisan_id: artisanId,
       amount,
       commission_amount: commissionAmount,
       artisan_amount: artisanAmount,
