@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image, Building2, AlertTriangle, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
@@ -26,6 +27,38 @@ interface UploadedCert {
 
 const CERT_ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const CERT_MAX_MB = 10;
+
+// Nigerian bank list (top banks)
+const NIGERIAN_BANKS = [
+  { code: '044', name: 'Access Bank' },
+  { code: '023', name: 'Citibank Nigeria' },
+  { code: '063', name: 'Diamond Bank' },
+  { code: '050', name: 'Ecobank Nigeria' },
+  { code: '084', name: 'Enterprise Bank' },
+  { code: '070', name: 'Fidelity Bank' },
+  { code: '011', name: 'First Bank of Nigeria' },
+  { code: '214', name: 'First City Monument Bank (FCMB)' },
+  { code: '058', name: 'Guaranty Trust Bank (GTBank)' },
+  { code: '030', name: 'Heritage Bank' },
+  { code: '301', name: 'Jaiz Bank' },
+  { code: '082', name: 'Keystone Bank' },
+  { code: '014', name: 'MainStreet Bank' },
+  { code: '076', name: 'Polaris Bank' },
+  { code: '101', name: 'Providus Bank' },
+  { code: '221', name: 'Stanbic IBTC Bank' },
+  { code: '068', name: 'Standard Chartered Bank' },
+  { code: '232', name: 'Sterling Bank' },
+  { code: '100', name: 'Suntrust Bank' },
+  { code: '032', name: 'Union Bank of Nigeria' },
+  { code: '033', name: 'United Bank for Africa (UBA)' },
+  { code: '215', name: 'Unity Bank' },
+  { code: '035', name: 'Wema Bank' },
+  { code: '057', name: 'Zenith Bank' },
+  { code: '305', name: 'Opay' },
+  { code: '304', name: 'Palmpay' },
+  { code: '090405', name: 'Moniepoint MFB' },
+  { code: '50515', name: 'Kuda MFB' },
+];
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -43,6 +76,12 @@ const ProfilePage = () => {
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | undefined>();
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Bank details state (artisan only)
+  const [bankCode, setBankCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [savingBank, setSavingBank] = useState(false);
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
