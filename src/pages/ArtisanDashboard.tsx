@@ -196,6 +196,22 @@ const ArtisanDashboard = () => {
           </div>
         )}
 
+        {/* Bank account prompt */}
+        {profile?.is_verified && artisanProfile && !(artisanProfile as any).account_number && (
+          <div className="flex items-start gap-3 p-4 rounded-xl border border-destructive/40 bg-destructive/5 mb-6">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-destructive">Bank Account Required for Payouts</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Add your bank account details so you can receive payment when jobs are confirmed complete.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => navigate('/profile?tab=bank')}>
+              <CreditCard className="h-4 w-4 mr-1" /> Add Bank
+            </Button>
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Welcome, {profile?.full_name}!</h1>
           <p className="text-muted-foreground mt-1">

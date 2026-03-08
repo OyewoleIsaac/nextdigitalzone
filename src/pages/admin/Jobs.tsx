@@ -16,7 +16,7 @@ import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { JobRejectDialog } from '@/components/admin/JobRejectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink } from 'lucide-react';
+import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink, Building2, AlertTriangle, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Job } from '@/hooks/useJobs';
 
@@ -55,11 +55,35 @@ const AdminJobs = () => {
   const [assignDialogJob, setAssignDialogJob] = useState<Job | null>(null);
   const [rejectDialogJob, setRejectDialogJob] = useState<Job | null>(null);
   const [salaryDialogJob, setSalaryDialogJob] = useState<Job | null>(null);
+  const [releaseDialogJob, setReleaseDialogJob] = useState<Job | null>(null);
+  const [releaseArtisanBank, setReleaseArtisanBank] = useState<{ bank_name?: string; account_number?: string; account_name?: string } | null>(null);
+  const [loadingReleaseBank, setLoadingReleaseBank] = useState(false);
+  const [confirmingRelease, setConfirmingRelease] = useState(false);
   const [artisans, setArtisans] = useState<ArtisanOption[]>([]);
   const [loadingArtisans, setLoadingArtisans] = useState(false);
   const [searchArtisan, setSearchArtisan] = useState('');
   const [showAllArtisans, setShowAllArtisans] = useState(false);
   const [agreedSalary, setAgreedSalary] = useState('');
+
+  const openReleaseDialog = async (job: Job) => {
+    setReleaseDialogJob(job);
+    setReleaseArtisanBank(null);
+    if (job.artisan_id) {
+      setLoadingReleaseBank(true);
+      try {
+        const { data } = await supabase
+          .from('artisan_profiles')
+          .select('bank_name, bank_code, account_number, account_name')
+          .eq('user_id', job.artisan_id)
+          .maybeSingle();
+        setReleaseArtisanBank(data || {});
+      } catch {
+        setReleaseArtisanBank({});
+      } finally {
+        setLoadingReleaseBank(false);
+      }
+    }
+  };
 
   const fetchArtisans = async (job: Job) => {
     setAssignDialogJob(job);
@@ -170,17 +194,26 @@ const AdminJobs = () => {
   };
 
   const handleReleaseWorkmanship = async (job: Job) => {
-    if (!user) return;
-    await updateJob.mutateAsync({ id: job.id, workmanship_released_at: new Date().toISOString() } as any);
-    await addHistory.mutateAsync({
-      job_id: job.id,
-      old_status: job.status,
-      new_status: job.status,
-      changed_by: user.id,
-      notes: 'Admin confirmed workmanship payment released to artisan',
-    });
-    toast.success('Workmanship payment released!');
-    setSelectedJob(null);
+    if (!user || !releaseDialogJob) return;
+    setConfirmingRelease(true);
+    try {
+      await updateJob.mutateAsync({ id: job.id, workmanship_released_at: new Date().toISOString() } as any);
+      const hasBankDetails = !!(releaseArtisanBank as any)?.account_number;
+      await addHistory.mutateAsync({
+        job_id: job.id,
+        old_status: job.status,
+        new_status: job.status,
+        changed_by: user.id,
+        notes: hasBankDetails
+          ? `Admin confirmed workmanship payment manually transferred to artisan bank account: ${(releaseArtisanBank as any)?.bank_name} (${(releaseArtisanBank as any)?.account_name} · ${(releaseArtisanBank as any)?.account_number})`
+          : 'Admin confirmed workmanship payment released to artisan (no bank account on file)',
+      });
+      toast.success('Workmanship payment marked as released!');
+      setReleaseDialogJob(null);
+      setSelectedJob(null);
+    } finally {
+      setConfirmingRelease(false);
+    }
   };
 
   const statusOptions = [
@@ -320,7 +353,7 @@ const AdminJobs = () => {
                         </Button>
                       )}
                       {job.status === 'confirmed' && !(job as any).workmanship_released_at && (
-                        <Button size="sm" variant="outline" onClick={() => handleReleaseWorkmanship(job)} disabled={updateJob.isPending}>
+                        <Button size="sm" variant="outline" onClick={() => openReleaseDialog(job)} disabled={updateJob.isPending}>
                           <Wrench className="h-4 w-4 mr-1" /> Release Workmanship
                         </Button>
                       )}
@@ -359,9 +392,9 @@ const AdminJobs = () => {
                 <p className="text-muted-foreground mt-1">Workmanship to release: ₦{((selectedJob as any).workmanship_cost / 100).toLocaleString()}</p>
               )}
             </div>
-            <Button className="w-full" onClick={() => handleReleaseWorkmanship(selectedJob)} disabled={updateJob.isPending}>
+            <Button className="w-full" onClick={() => openReleaseDialog(selectedJob)} disabled={updateJob.isPending}>
               {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wrench className="h-4 w-4 mr-2" />}
-              Confirm Workmanship % Released to Artisan
+              Release Workmanship Payment
             </Button>
           </div>
         )}
@@ -374,6 +407,87 @@ const AdminJobs = () => {
         onConfirm={handleRejectJob}
         isPending={updateJob.isPending}
       />
+
+      {/* Release Workmanship Dialog */}
+      <Dialog open={!!releaseDialogJob} onOpenChange={(open) => !open && setReleaseDialogJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" />
+              Release Workmanship Payment
+            </DialogTitle>
+          </DialogHeader>
+          {releaseDialogJob && (
+            <div className="space-y-4 py-2">
+              {/* Job summary */}
+              <div className="rounded-lg bg-muted/40 p-3 text-sm space-y-1">
+                <p className="font-medium">{releaseDialogJob.title}</p>
+                {(releaseDialogJob as any).workmanship_cost && (
+                  <p className="text-muted-foreground">
+                    Workmanship amount (80% share):&nbsp;
+                    <span className="font-semibold text-foreground">
+                      ₦{(Math.round((releaseDialogJob as any).workmanship_cost * 0.8) / 100).toLocaleString()}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Artisan bank details */}
+              {loadingReleaseBank ? (
+                <div className="flex items-center gap-2 py-4 justify-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading artisan bank details...
+                </div>
+              ) : releaseArtisanBank && (releaseArtisanBank as any).account_number ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Artisan Bank Account
+                  </p>
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Bank</span>
+                      <span className="font-medium">{(releaseArtisanBank as any).bank_name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Account Number</span>
+                      <span className="font-mono font-semibold">{(releaseArtisanBank as any).account_number}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Account Name</span>
+                      <span className="font-medium">{(releaseArtisanBank as any).account_name}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                    Please transfer the exact workmanship amount to the account above before clicking "Confirm Transfer Done".
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                    <p className="text-sm font-medium text-destructive">No bank account on file</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    This artisan has not added their bank details. Contact them directly to arrange payment, then confirm below.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReleaseDialogJob(null)}>Cancel</Button>
+            <Button
+              onClick={() => releaseDialogJob && handleReleaseWorkmanship(releaseDialogJob)}
+              disabled={confirmingRelease || loadingReleaseBank}
+            >
+              {confirmingRelease
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming...</>
+                : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Transfer Done</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Set Agreed Salary Dialog */}
       <Dialog open={!!salaryDialogJob} onOpenChange={(open) => !open && setSalaryDialogJob(null)}>

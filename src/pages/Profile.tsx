@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useArtisanProfile } from '@/hooks/useProfile';
 import { useCategories } from '@/hooks/useCategories';
@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image, Building2, AlertTriangle, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
@@ -27,12 +28,48 @@ interface UploadedCert {
 const CERT_ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const CERT_MAX_MB = 10;
 
+// Nigerian bank list (top banks)
+const NIGERIAN_BANKS = [
+  { code: '044', name: 'Access Bank' },
+  { code: '023', name: 'Citibank Nigeria' },
+  { code: '063', name: 'Diamond Bank' },
+  { code: '050', name: 'Ecobank Nigeria' },
+  { code: '084', name: 'Enterprise Bank' },
+  { code: '070', name: 'Fidelity Bank' },
+  { code: '011', name: 'First Bank of Nigeria' },
+  { code: '214', name: 'First City Monument Bank (FCMB)' },
+  { code: '058', name: 'Guaranty Trust Bank (GTBank)' },
+  { code: '030', name: 'Heritage Bank' },
+  { code: '301', name: 'Jaiz Bank' },
+  { code: '082', name: 'Keystone Bank' },
+  { code: '014', name: 'MainStreet Bank' },
+  { code: '076', name: 'Polaris Bank' },
+  { code: '101', name: 'Providus Bank' },
+  { code: '221', name: 'Stanbic IBTC Bank' },
+  { code: '068', name: 'Standard Chartered Bank' },
+  { code: '232', name: 'Sterling Bank' },
+  { code: '100', name: 'Suntrust Bank' },
+  { code: '032', name: 'Union Bank of Nigeria' },
+  { code: '033', name: 'United Bank for Africa (UBA)' },
+  { code: '215', name: 'Unity Bank' },
+  { code: '035', name: 'Wema Bank' },
+  { code: '057', name: 'Zenith Bank' },
+  { code: '305', name: 'Opay' },
+  { code: '304', name: 'Palmpay' },
+  { code: '090405', name: 'Moniepoint MFB' },
+  { code: '50515', name: 'Kuda MFB' },
+];
+
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useProfile();
   const { data: artisanProfile, refetch: refetchArtisan } = useArtisanProfile();
   const { data: categories } = useCategories();
+
+  // Default tab (support ?tab=bank deep link)
+  const defaultTab = searchParams.get('tab') || 'profile';
 
   // Profile info state
   const [fullName, setFullName] = useState('');
@@ -43,6 +80,12 @@ const ProfilePage = () => {
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | undefined>();
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Bank details state (artisan only)
+  const [bankCode, setBankCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [savingBank, setSavingBank] = useState(false);
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -83,12 +126,47 @@ const ProfilePage = () => {
       setBio(artisanProfile.bio || '');
       setCategoryId(artisanProfile.category_id || '');
       setYearsExperience(artisanProfile.years_experience?.toString() || '');
+      setBankCode((artisanProfile as any).bank_code || '');
+      setAccountNumber((artisanProfile as any).account_number || '');
+      setAccountName((artisanProfile as any).account_name || '');
     }
   }, [artisanProfile]);
 
   const handleAddressChange = (addr: string, coords: { lat: number; lng: number }) => {
     setAddress(addr);
     setAddressCoords(coords);
+  };
+
+  const handleSaveBank = async () => {
+    if (!user) return;
+    if (!bankCode || !accountNumber || !accountName) {
+      toast.error('Please fill in all bank account fields');
+      return;
+    }
+    if (accountNumber.length < 10) {
+      toast.error('Please enter a valid 10-digit account number');
+      return;
+    }
+    setSavingBank(true);
+    try {
+      const selectedBank = NIGERIAN_BANKS.find(b => b.code === bankCode);
+      const { error } = await supabase
+        .from('artisan_profiles')
+        .update({
+          bank_code: bankCode,
+          bank_name: selectedBank?.name || '',
+          account_number: accountNumber,
+          account_name: accountName,
+        } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      refetchArtisan();
+      toast.success('Bank account saved! You will receive payments to this account.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save bank details');
+    } finally {
+      setSavingBank(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -327,12 +405,20 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="profile">
-          <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <Tabs defaultValue={defaultTab}>
+          <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-5' : 'grid-cols-3'}`}>
             <TabsTrigger value="profile" className="flex-1"><User className="h-3.5 w-3.5 mr-1.5" />Profile</TabsTrigger>
             <TabsTrigger value="location" className="flex-1"><MapPin className="h-3.5 w-3.5 mr-1.5" />Location</TabsTrigger>
             {isArtisan && (
-              <TabsTrigger value="certificates" className="flex-1"><Award className="h-3.5 w-3.5 mr-1.5" />Certificates</TabsTrigger>
+              <TabsTrigger value="bank" className="flex-1 relative">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />Bank
+                {!(artisanProfile as any)?.account_number && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
+                )}
+              </TabsTrigger>
+            )}
+            {isArtisan && (
+              <TabsTrigger value="certificates" className="flex-1"><Award className="h-3.5 w-3.5 mr-1.5" />Certs</TabsTrigger>
             )}
             <TabsTrigger value="password" className="flex-1"><Lock className="h-3.5 w-3.5 mr-1.5" />Password</TabsTrigger>
           </TabsList>
@@ -425,6 +511,89 @@ const ProfilePage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Bank Details Tab (artisans only) */}
+          {isArtisan && (
+            <TabsContent value="bank">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Bank Account Details
+                  </CardTitle>
+                  <CardDescription>
+                    Add your bank account so workmanship payments are transferred directly to you after job completion.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(artisanProfile as any)?.account_number ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-success/5 border border-success/20">
+                      <CheckCircle className="h-5 w-5 text-success shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-success">Bank account linked</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {(artisanProfile as any).bank_name} · ••••••{(artisanProfile as any).account_number?.slice(-4)} · {(artisanProfile as any).account_name}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <Alert variant="destructive" className="bg-destructive/5 border-destructive/30">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        No bank account linked. You won't receive payment transfers until you add your bank details.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Select value={bankCode} onValueChange={setBankCode}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your bank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NIGERIAN_BANKS.map((bank) => (
+                          <SelectItem key={bank.code} value={bank.code}>{bank.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="acct-number">Account Number</Label>
+                    <Input
+                      id="acct-number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={11}
+                      placeholder="0123456789"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter your 10-digit NUBAN account number</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="acct-name">Account Name</Label>
+                    <Input
+                      id="acct-name"
+                      type="text"
+                      placeholder="e.g. John Adewale Okafor"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter the account name exactly as it appears on your bank account</p>
+                  </div>
+
+                  <Button onClick={handleSaveBank} disabled={savingBank} className="w-full">
+                    {savingBank
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                      : <><Save className="h-4 w-4 mr-2" />{(artisanProfile as any)?.account_number ? 'Update Bank Account' : 'Save Bank Account'}</>}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Certificates Tab (artisans only) */}
           {isArtisan && (
