@@ -66,13 +66,12 @@ function PartyCard({
   navigate: (path: string) => void;
 }) {
   if (!profile) return null;
-  const profilePath = role === 'artisan' ? '/admin/artisans' : '/admin/clients';
   return (
     <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
         <button
-          onClick={() => navigate(profilePath)}
+          onClick={() => navigate(`/admin/user/${userId}`)}
           className="flex items-center gap-1 text-xs text-primary hover:underline"
         >
           <ExternalLink className="h-3 w-3" /> View Profile
