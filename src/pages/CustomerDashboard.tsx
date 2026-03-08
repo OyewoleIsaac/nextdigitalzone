@@ -159,6 +159,37 @@ const CustomerDashboard = () => {
           </Button>
         </div>
 
+        {/* Wallet Panel */}
+        {showWallet && (
+          <Card className="mb-8 border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-primary" />
+                Platform Wallet
+                <Badge variant="outline" className="ml-auto text-primary border-primary/30">
+                  ₦{(walletBalance / 100).toLocaleString()} available
+                </Badge>
+              </CardTitle>
+              <CardDescription>Credits you can use to pay the booking fee on future service requests.</CardDescription>
+            </CardHeader>
+            {walletTx.length > 0 && (
+              <CardContent className="pt-0">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Transaction History</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {walletTx.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between text-xs rounded border p-2">
+                      <span className="text-muted-foreground truncate max-w-[200px]">{tx.description}</span>
+                      <span className={tx.type === 'credit' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                        {tx.type === 'credit' ? '+' : '-'}₦{(Math.abs(tx.amount) / 100).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
         {/* Draft Jobs (Unpaid Booking Fee) */}
         {draftJobs.length > 0 && (
           <div className="mb-8">
@@ -172,15 +203,41 @@ const CustomerDashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               {draftJobs.map((job) => (
                 <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                  <Button
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
-                    disabled={initPayment.isPending}
-                  >
-                    <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                    Pay ₦5,000 to Activate
-                  </Button>
+                  <div className="flex gap-2 mt-2">
+                    {walletBalance >= 500000 ? (
+                      <>
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          variant="outline"
+                          onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
+                          disabled={initPayment.isPending || payWithWallet.isPending}
+                        >
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          Pay by Card
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => { e.stopPropagation(); payWithWallet.mutate({ job_id: job.id, amount: 500000 }); }}
+                          disabled={payWithWallet.isPending || initPayment.isPending}
+                        >
+                          <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                          Pay with Credit
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
+                        disabled={initPayment.isPending}
+                      >
+                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                        Pay ₦5,000 to Activate
+                      </Button>
+                    )}
+                  </div>
                 </JobCard>
               ))}
             </div>
