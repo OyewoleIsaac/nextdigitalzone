@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin,
+  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning,
 } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { useDisputeForJob } from '@/hooks/useDisputes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
@@ -34,6 +35,7 @@ const ArtisanDashboard = () => {
   const [workmanshipCost, setWorkmanshipCost] = useState('');
   const [inspectionNotes, setInspectionNotes] = useState('');
   const [showGeneralDispute, setShowGeneralDispute] = useState(false);
+  const { data: selectedJobDispute } = useDisputeForJob(selectedJob?.id);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -381,6 +383,27 @@ const ArtisanDashboard = () => {
               Mark Job as Completed
             </Button>
             <p className="text-xs text-muted-foreground text-center">Customer must confirm completion before funds are released.</p>
+          </div>
+        )}
+
+        {/* Show dispute filed on this job (read-only for artisan) */}
+        {selectedJobDispute && (
+          <div className="pt-4 border-t">
+            <div className={`rounded-lg p-3 space-y-1.5 text-sm ${
+              selectedJobDispute.status === 'open' ? 'bg-destructive/5 border border-destructive/20' :
+              selectedJobDispute.status === 'resolved' ? 'bg-green-50 border border-green-200' :
+              'bg-muted border'
+            }`}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={`h-4 w-4 shrink-0 ${selectedJobDispute.status === 'open' ? 'text-destructive' : 'text-muted-foreground'}`} />
+                <p className="font-semibold capitalize">Dispute Filed — {selectedJobDispute.status}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Customer's reason: "{selectedJobDispute.reason}"</p>
+              {selectedJobDispute.resolution_notes && (
+                <p className="text-xs bg-white/50 rounded p-1.5">Resolution: {selectedJobDispute.resolution_notes}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">Our team is reviewing this. Please cooperate with any admin queries.</p>
+            </div>
           </div>
         )}
       </JobDetailDialog>

@@ -80,15 +80,18 @@ const AdminJobs = () => {
 
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
-      const withDistance: ArtisanOption[] = artisanData.map((a: any) => ({
-        ...a,
-        profile: profileMap[a.user_id],
-        distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
-        same_category: job.category_id ? a.category_id === job.category_id : false,
-      })).sort((a: any, b: any) => {
-        if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
-        return a.distance_km - b.distance_km;
-      });
+      const withDistance: ArtisanOption[] = artisanData
+        // Only include artisans that have a matching profile (filter ghost artisans)
+        .filter((a: any) => !!profileMap[a.user_id])
+        .map((a: any) => ({
+          ...a,
+          profile: profileMap[a.user_id],
+          distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
+          same_category: job.category_id ? a.category_id === job.category_id : false,
+        })).sort((a: any, b: any) => {
+          if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
+          return a.distance_km - b.distance_km;
+        });
 
       setArtisans(withDistance);
     } catch (err: any) {
@@ -233,6 +236,11 @@ const AdminJobs = () => {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold truncate">{job.title}</h3>
                         <JobStatusBadge status={job.status} />
+                        {job.status === 'disputed' && (
+                          <Badge variant="destructive" className="text-[10px] h-4 gap-0.5">
+                            <AlertCircle className="h-2.5 w-2.5" /> Disputed
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1">{job.description}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
