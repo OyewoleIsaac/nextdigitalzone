@@ -116,7 +116,7 @@ export function useJobHistory(jobId: string) {
   });
 }
 
-// Create a new job
+// Create a new job as 'draft' (booking fee not yet paid)
 export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -131,7 +131,7 @@ export function useCreateJob() {
     }) => {
       const { data: result, error } = await supabase
         .from('jobs')
-        .insert(data)
+        .insert({ ...data, status: 'draft' as any })
         .select()
         .single();
       if (error) throw error;
@@ -139,17 +139,15 @@ export function useCreateJob() {
       // Insert initial status history
       await supabase.from('job_status_history').insert({
         job_id: result.id,
-        new_status: 'pending' as unknown as string,
+        new_status: 'draft' as unknown as string,
         changed_by: data.customer_id,
-        notes: 'Job request submitted',
+        notes: 'Service request created — awaiting booking fee payment',
       } as any);
 
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['all-jobs'] });
-      toast.success('Service request submitted successfully!');
     },
     onError: (error: Error) => {
       toast.error(`Failed to submit request: ${error.message}`);
