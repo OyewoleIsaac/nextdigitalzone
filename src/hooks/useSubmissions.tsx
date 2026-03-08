@@ -133,15 +133,27 @@ export function useUpdateArtisanSubmission() {
       if (error) throw error;
 
       // When confirmed, verify the user's profile via user_id stored in metadata
-      if (status === 'confirmed' && data?.metadata) {
-        const meta = data.metadata as Record<string, unknown>;
+      if ((status === 'confirmed' || status === 'rejected') && data) {
+        const meta = data.metadata as Record<string, unknown> | null;
         const userId = meta?.user_id as string | undefined;
-        if (userId) {
+
+        if (status === 'confirmed' && userId) {
           await supabase
             .from('profiles')
             .update({ is_verified: true, is_active: true })
             .eq('user_id', userId);
         }
+
+        // Send email notification (fire-and-forget, don't block on failure)
+        supabase.functions.invoke('notify-submission-status', {
+          body: {
+            email: data.email,
+            full_name: data.full_name,
+            status,
+            role: 'artisan',
+            rejection_reason: rejection_reason || undefined,
+          },
+        }).catch((e) => console.warn('Email notification failed:', e));
       }
 
       return data;
