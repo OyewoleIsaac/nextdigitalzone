@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, Clock, Info } from 'lucide-react';
 import { useOpenDispute, useDisputeForJob } from '@/hooks/useDisputes';
 import type { Job } from '@/hooks/useJobs';
+
+// Refund policy
+const BOOKING_FEE_NGN = 5000;
+const PROCESSING_DEDUCTION_NGN = 300;
+const REFUND_AMOUNT_NGN = BOOKING_FEE_NGN - PROCESSING_DEDUCTION_NGN; // ₦4,700
 
 interface DisputeDialogProps {
   job: Job | null;
