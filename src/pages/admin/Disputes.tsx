@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet, User, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Dispute } from '@/hooks/useDisputes';
 
