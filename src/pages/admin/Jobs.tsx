@@ -62,21 +62,37 @@ const AdminJobs = () => {
     setLoadingArtisans(true);
     setShowAllArtisans(false);
     try {
-      // Fetch ALL available artisans with their profiles (no category filter — admin can assign any)
-      const { data, error } = await supabase
+      // Fetch all available artisan profiles
+      const { data: artisanData, error: artisanError } = await supabase
         .from('artisan_profiles')
-        .select('*, profile:profiles!artisan_profiles_user_id_profiles_fkey(full_name, phone, address, is_verified)')
+        .select('*')
         .eq('is_available', true);
 
-      if (error) throw error;
+      if (artisanError) throw artisanError;
+
+      if (!artisanData || artisanData.length === 0) {
+        setArtisans([]);
+        return;
+      }
+
+      // Fetch matching profiles separately to avoid FK join schema cache issues
+      const userIds = artisanData.map((a: any) => a.user_id);
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone, address, is_verified')
+        .in('user_id', userIds);
+
+      if (profileError) throw profileError;
+
+      const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
       // Compute distances and sort: same-category & nearby first
-      const withDistance = (data || []).map((a: any) => ({
+      const withDistance = artisanData.map((a: any) => ({
         ...a,
+        profile: profileMap[a.user_id] ? [profileMap[a.user_id]] : [],
         distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
         same_category: job.category_id ? a.category_id === job.category_id : false,
       })).sort((a: any, b: any) => {
-        // Same-category first, then by distance
         if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
         return a.distance_km - b.distance_km;
       });
