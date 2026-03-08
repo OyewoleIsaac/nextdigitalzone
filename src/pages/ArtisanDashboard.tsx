@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning,
+  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
 } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
@@ -51,7 +51,7 @@ const ArtisanDashboard = () => {
 
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
-  // Artisan submits quote (material + workmanship) after inspection
+  // Artisan submits quote (material + workmanship) ONLY after customer confirms inspection
   const handleSubmitQuote = async () => {
     if (!selectedJob || !user || !materialCost || !workmanshipCost) return;
     const matKobo = Math.round(parseFloat(materialCost) * 100);
@@ -93,18 +93,23 @@ const ArtisanDashboard = () => {
     setInspectionNotes('');
   };
 
-  // Artisan marks job complete
+  // Artisan uploads photos and marks as "proof submitted" — status becomes 'completed'
   const handleMarkComplete = async () => {
     if (!selectedJob || !user) return;
+    // Require at least the after photo before marking complete
+    if (!selectedJob.photo_after) {
+      toast.error('Please upload an "After" photo as proof of completion before marking the job done.');
+      return;
+    }
     await updateJob.mutateAsync({ id: selectedJob.id, status: 'completed' as any });
     await addHistory.mutateAsync({
       job_id: selectedJob.id,
       old_status: selectedJob.status,
       new_status: 'completed',
       changed_by: user.id,
-      notes: 'Artisan marked job as completed. Awaiting customer confirmation.',
+      notes: 'Artisan submitted proof of completion (photos uploaded). Awaiting customer confirmation.',
     });
-    toast.success('Job marked as completed! Waiting for customer confirmation.');
+    toast.success('Proof submitted! Waiting for customer to confirm completion.');
     setSelectedJob(null);
   };
 
@@ -134,6 +139,8 @@ const ArtisanDashboard = () => {
     if (uploadError) { toast.error('Failed to upload photo'); return; }
     const field = type === 'before' ? 'photo_before' : 'photo_after';
     await updateJob.mutateAsync({ id: selectedJob.id, [field]: path });
+    // Update local selectedJob state so button state refreshes
+    setSelectedJob(prev => prev ? { ...prev, [field]: path } : prev);
     toast.success(`${type === 'before' ? 'Before' : 'After'} photo uploaded!`);
   };
 
@@ -144,7 +151,6 @@ const ArtisanDashboard = () => {
   const activeJobs = jobs?.filter(j => !['confirmed', 'cancelled'].includes(j.status)) || [];
   const pastJobs = jobs?.filter(j => ['confirmed', 'cancelled'].includes(j.status)) || [];
 
-  // Helper to get customer info from job
   const getCustomerInfo = (job: Job) => ({
     name: (job as any).customer_profile?.full_name,
     phone: (job as any).customer_profile?.phone,
@@ -295,13 +301,13 @@ const ArtisanDashboard = () => {
               {(selectedJob as any).customer_profile?.full_name && (
                 <div className="flex items-center gap-1.5 text-sm">
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{(selectedJob as any).customer_profile.full_name}</span>
+                  <span className="font-medium">{(selectedJob as any).customer_profile.full_name}</span>
                 </div>
               )}
               {(selectedJob as any).customer_profile?.phone && (
                 <div className="flex items-center gap-1.5 text-sm">
                   <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary">
+                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary font-medium">
                     {(selectedJob as any).customer_profile.phone}
                   </a>
                 </div>
@@ -312,9 +318,10 @@ const ArtisanDashboard = () => {
               </div>
             </div>
 
-            {/* Mark inspection done (only if category requires inspection) */}
+            {/* Mark inspection done */}
             <div className="space-y-2">
               <h4 className="font-semibold text-sm">Mark Inspection as Done</h4>
+              <p className="text-xs text-muted-foreground">Once you mark inspection done, the customer will be asked to confirm. You can only submit a quote after the customer confirms.</p>
               <Textarea
                 placeholder="Optional inspection notes..."
                 value={inspectionNotes}
@@ -325,16 +332,44 @@ const ArtisanDashboard = () => {
                 {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 I Have Completed the Inspection
               </Button>
-              <p className="text-xs text-muted-foreground text-center">Customer must confirm this before you can submit a quote.</p>
             </div>
           </div>
         )}
 
-        {/* inspection_paid (customer confirmed inspection): submit quote */}
+        {/* inspection_paid (customer confirmed inspection): submit quote — ONLY available here */}
         {selectedJob?.status === 'inspection_paid' && (
           <div className="pt-4 space-y-4 border-t">
+            {/* Customer contact info */}
+            <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer Contact</p>
+              {(selectedJob as any).customer_profile?.full_name && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium">{(selectedJob as any).customer_profile.full_name}</span>
+                </div>
+              )}
+              {(selectedJob as any).customer_profile?.phone && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary font-medium">
+                    {(selectedJob as any).customer_profile.phone}
+                  </a>
+                </div>
+              )}
+              <div className="flex items-start gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <span>{selectedJob.address}</span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/30 text-sm">
+              <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-success">Customer confirmed your inspection!</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You can now submit your quote for the job.</p>
+              </div>
+            </div>
             <h4 className="font-semibold text-sm">Submit Quote</h4>
-            <p className="text-xs text-muted-foreground">Customer confirmed your inspection. Submit a detailed quote for the job.</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">Material Cost (₦)</Label>
@@ -358,31 +393,108 @@ const ArtisanDashboard = () => {
           </div>
         )}
 
+        {/* Quote accepted, awaiting payment */}
+        {selectedJob?.status === 'price_agreed' && (
+          <div className="pt-4 space-y-3 border-t">
+            {/* Customer contact info */}
+            <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer Contact</p>
+              {(selectedJob as any).customer_profile?.full_name && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium">{(selectedJob as any).customer_profile.full_name}</span>
+                </div>
+              )}
+              {(selectedJob as any).customer_profile?.phone && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary font-medium">
+                    {(selectedJob as any).customer_profile.phone}
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+              <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-warning">Quote Accepted — Awaiting Payment</p>
+                <p className="text-xs text-muted-foreground mt-0.5">The customer has accepted your quote but has not yet made payment. Work should only begin after payment is confirmed.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* In progress / payment escrowed: photos + mark complete */}
         {selectedJob && ['in_progress', 'payment_escrowed'].includes(selectedJob.status) && (
           <div className="pt-4 space-y-3 border-t">
+            {/* Customer contact info */}
+            <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer Contact</p>
+              {(selectedJob as any).customer_profile?.full_name && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium">{(selectedJob as any).customer_profile.full_name}</span>
+                </div>
+              )}
+              {(selectedJob as any).customer_profile?.phone && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a href={`tel:${(selectedJob as any).customer_profile.phone}`} className="text-primary font-medium">
+                    {(selectedJob as any).customer_profile.phone}
+                  </a>
+                </div>
+              )}
+              <div className="flex items-start gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <span>{selectedJob.address}</span>
+              </div>
+            </div>
+
             <h4 className="font-semibold text-sm">Job Documentation</h4>
+            <p className="text-xs text-muted-foreground">Upload before and after photos, then mark the job as complete. The customer must confirm before funds are released.</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Before Photo</Label>
+                <Label className="text-xs">Before Photo {selectedJob.photo_before && <span className="text-success ml-1">✓ Uploaded</span>}</Label>
                 <label className="flex items-center justify-center gap-1 border border-dashed rounded-lg p-3 cursor-pointer hover:bg-muted/50 text-xs text-muted-foreground">
-                  <Camera className="h-4 w-4" /> Upload
+                  <Camera className="h-4 w-4" /> {selectedJob.photo_before ? 'Replace' : 'Upload'}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhotoUpload('before', e.target.files[0])} />
                 </label>
               </div>
               <div>
-                <Label className="text-xs">After Photo</Label>
+                <Label className="text-xs">After Photo {selectedJob.photo_after && <span className="text-success ml-1">✓ Uploaded</span>}</Label>
                 <label className="flex items-center justify-center gap-1 border border-dashed rounded-lg p-3 cursor-pointer hover:bg-muted/50 text-xs text-muted-foreground">
-                  <Camera className="h-4 w-4" /> Upload
+                  <Camera className="h-4 w-4" /> {selectedJob.photo_after ? 'Replace' : 'Upload'}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhotoUpload('after', e.target.files[0])} />
                 </label>
               </div>
             </div>
-            <Button className="w-full" onClick={handleMarkComplete} disabled={updateJob.isPending}>
+            {!selectedJob.photo_after && (
+              <p className="text-xs text-warning flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> An "After" photo is required to submit proof of completion.
+              </p>
+            )}
+            <Button
+              className="w-full"
+              onClick={handleMarkComplete}
+              disabled={updateJob.isPending || !selectedJob.photo_after}
+            >
               {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-              Mark Job as Completed
+              Submit Proof & Mark as Complete
             </Button>
             <p className="text-xs text-muted-foreground text-center">Customer must confirm completion before funds are released.</p>
+          </div>
+        )}
+
+        {/* completed: waiting for customer confirmation */}
+        {selectedJob?.status === 'completed' && (
+          <div className="pt-4 space-y-3 border-t">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm">
+              <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-primary">Proof Submitted — Awaiting Customer Confirmation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You've uploaded your photos and marked the job done. Waiting for the customer to confirm so funds can be released.</p>
+              </div>
+            </div>
           </div>
         )}
 

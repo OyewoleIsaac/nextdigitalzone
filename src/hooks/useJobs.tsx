@@ -90,6 +90,40 @@ export function useArtisanJobs() {
   });
 }
 
+// Customer: fetch own jobs enriched with artisan profile (name + phone only, no address)
+export function useCustomerJobsEnriched() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['customer-jobs-enriched', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*, category:categories(id, name, slug, requires_inspection, is_agency_job, default_inspection_fee, default_agency_fee)')
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const jobs = data as Job[];
+      if (jobs.length === 0) return jobs;
+
+      const artisanIds = [...new Set(jobs.filter(j => j.artisan_id).map(j => j.artisan_id as string))];
+      if (artisanIds.length === 0) return jobs;
+
+      const { data: artisanProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', artisanIds);
+      const artisanMap = Object.fromEntries((artisanProfiles || []).map(p => [p.user_id, p]));
+      return jobs.map(j => ({
+        ...j,
+        artisan_profile: j.artisan_id ? (artisanMap[j.artisan_id] || null) : null,
+      })) as Job[];
+    },
+    enabled: !!user,
+  });
+}
+
 // Admin: fetch all jobs with customer + artisan profiles
 export function useAllJobs(statusFilter?: string) {
   return useQuery({

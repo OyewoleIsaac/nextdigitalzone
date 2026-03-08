@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { useCustomerJobs } from '@/hooks/useJobs';
+import { useCustomerJobsEnriched } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText, MessageCircleWarning, CheckCircle, FileWarning } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText, MessageCircleWarning, CheckCircle, FileWarning, Phone } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
@@ -26,7 +26,7 @@ const CustomerDashboard = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: jobs, isLoading: jobsLoading } = useCustomerJobs();
+  const { data: jobs, isLoading: jobsLoading } = useCustomerJobsEnriched();
   const updateJob = useUpdateJob();
   const addHistory = useAddJobHistory();
   const initPayment = useInitializePayment();
@@ -64,9 +64,7 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  // Pay upfront fee (inspection or agency) for draft jobs
   const handlePayDraftFee = async (job: Job, useWalletCredit = false) => {
-    // Use the fee stored on the job first; fall back to category default; never default to agency fee (₦5,000)
     const cat = (job as any).category;
     const feeAmount = job.inspection_fee
       ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
@@ -87,7 +85,6 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  // Helper: get the correct display fee for a draft job
   const getDraftFeeDisplay = (job: Job) => {
     const cat = (job as any).category;
     return job.inspection_fee
@@ -96,7 +93,6 @@ const CustomerDashboard = () => {
       ?? 0;
   };
 
-  // Customer confirms inspection happened
   const handleConfirmInspection = async (job: Job) => {
     if (!user) return;
     await updateJob.mutateAsync({ id: job.id, status: 'inspection_paid' as any });
@@ -111,7 +107,6 @@ const CustomerDashboard = () => {
     setSelectedJob(null);
   };
 
-  // Pay for quoted job (material + workmanship)
   const handlePayForJob = async (job: Job) => {
     const amount = job.quoted_amount || job.final_amount;
     if (!amount) return;
@@ -121,7 +116,7 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  // Accept quote & move to price_agreed
+  // Accept quote & move to price_agreed — stay in dialog to prompt payment
   const handleAcceptQuote = async (job: Job) => {
     if (!user) return;
     await updateJob.mutateAsync({ id: job.id, status: 'price_agreed' as any });
@@ -130,10 +125,11 @@ const CustomerDashboard = () => {
       old_status: job.status,
       new_status: 'price_agreed',
       changed_by: user.id,
-      notes: 'Customer accepted the quote',
+      notes: 'Customer accepted the quote — awaiting payment',
     });
-    toast.success('Quote accepted! Proceed to pay.');
-    setSelectedJob(null);
+    toast.success('Quote accepted! Please complete payment below.');
+    // Update selectedJob so dialog shows payment prompt immediately
+    setSelectedJob(prev => prev ? { ...prev, status: 'price_agreed' as any } : prev);
   };
 
   const draftJobs = jobs?.filter(j => j.status === 'draft') || [];
@@ -276,7 +272,6 @@ const CustomerDashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               {activeJobs.map((job) => (
                 <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                  {/* Dispute button for assigned/in-progress jobs */}
                   {['assigned', 'inspection_paid', 'quoted', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed', 'disputed'].includes(job.status) && (
                     <Button
                       size="sm"
@@ -343,30 +338,91 @@ const CustomerDashboard = () => {
           );
         })()}
 
-        {/* Artisan has done inspection — customer confirms */}
+        {/* Artisan has been assigned — show artisan info (name + phone only, no address) */}
         {selectedJob?.status === 'assigned' && (
-          <div className="pt-4 rounded-lg border border-muted p-3 text-center">
-            <p className="text-xs text-muted-foreground">An artisan has been assigned and will visit you for inspection. Once the artisan marks inspection as done, you'll need to confirm here.</p>
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-center">
+              <p className="text-xs text-muted-foreground">An artisan has been assigned and will visit you for inspection. Once the artisan marks inspection as done, you'll need to confirm here.</p>
+            </div>
           </div>
         )}
 
         {/* Artisan marked inspection done — customer confirms */}
         {selectedJob?.status === 'inspection_paid' && (
-          <div className="pt-4 space-y-2">
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-              <p className="font-medium text-primary mb-1">Artisan marked inspection as done</p>
-              <p className="text-xs text-muted-foreground">Please confirm below that the artisan did carry out the inspection at your location.</p>
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+                <p className="font-medium text-primary mb-1">Artisan marked inspection as done</p>
+                <p className="text-xs text-muted-foreground">Please confirm below that the artisan did carry out the inspection at your location.</p>
+              </div>
+              <Button className="w-full" onClick={() => handleConfirmInspection(selectedJob)} disabled={updateJob.isPending}>
+                {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                Yes, Inspection Was Carried Out
+              </Button>
             </div>
-            <Button className="w-full" onClick={() => handleConfirmInspection(selectedJob)} disabled={updateJob.isPending}>
-              {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-              Yes, Inspection Was Carried Out
-            </Button>
           </div>
         )}
 
         {/* Quote received — show breakdown and accept */}
         {selectedJob?.status === 'quoted' && (
-          <div className="pt-4 space-y-3">
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
             <h4 className="font-semibold text-sm">Quote Received</h4>
             <div className="rounded-lg bg-muted/40 p-3 space-y-2 text-sm">
               {(selectedJob as any).material_cost != null && (
@@ -387,14 +443,38 @@ const CustomerDashboard = () => {
               </div>
             </div>
             <Button className="w-full" onClick={() => handleAcceptQuote(selectedJob)} disabled={updateJob.isPending}>
+              {updateJob.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Accept Quote & Proceed to Payment
             </Button>
           </div>
         )}
 
-        {/* Pay for job (escrow) */}
+        {/* Pay for job (escrow) — shown right after accepting or when returning to price_agreed */}
         {selectedJob?.status === 'price_agreed' && (
-          <div className="pt-4 space-y-2">
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
+              <p className="font-medium text-warning mb-1">Payment Required to Begin Work</p>
+              <p className="text-xs text-muted-foreground">Your quote has been accepted. Please complete payment to allow the artisan to proceed. Payment is held securely in escrow until you confirm the job is done.</p>
+            </div>
             <div className="rounded-lg bg-muted/40 p-3 space-y-2 text-sm">
               {(selectedJob as any).material_cost != null && (
                 <div className="flex justify-between"><span className="text-muted-foreground">Materials</span><span>₦{((selectedJob as any).material_cost / 100).toLocaleString()}</span></div>
@@ -408,25 +488,64 @@ const CustomerDashboard = () => {
               {initPayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
               Pay ₦{((selectedJob.quoted_amount || 0) / 100).toLocaleString()} (Held in Escrow)
             </Button>
-            <p className="text-xs text-muted-foreground text-center">Payment is held securely until you confirm the job is complete.</p>
           </div>
         )}
 
         {/* Escrow indicator */}
         {selectedJob?.status === 'payment_escrowed' && (
-          <div className="pt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
-            <CreditCard className="h-5 w-5 mx-auto text-primary mb-1" />
-            <p className="text-sm font-medium">Payment Held in Escrow</p>
-            <p className="text-xs text-muted-foreground">₦{((selectedJob.final_amount || selectedJob.quoted_amount || 0) / 100).toLocaleString()} • Released when you confirm completion</p>
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
+              <CreditCard className="h-5 w-5 mx-auto text-primary mb-1" />
+              <p className="text-sm font-medium">Payment Held in Escrow</p>
+              <p className="text-xs text-muted-foreground">₦{((selectedJob.final_amount || selectedJob.quoted_amount || 0) / 100).toLocaleString()} • Artisan is working on your job</p>
+            </div>
           </div>
         )}
 
-        {/* Confirm completion */}
+        {/* Artisan submitted proof — customer confirms */}
         {selectedJob?.status === 'completed' && (
-          <div className="pt-4 space-y-2">
+          <div className="pt-4 space-y-3 border-t">
+            {(selectedJob as any).artisan_profile && (
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Assigned Artisan</p>
+                {(selectedJob as any).artisan_profile?.full_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{(selectedJob as any).artisan_profile.full_name}</span>
+                  </div>
+                )}
+                {(selectedJob as any).artisan_profile?.phone && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${(selectedJob as any).artisan_profile.phone}`} className="text-primary font-medium">
+                      {(selectedJob as any).artisan_profile.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-              <p className="font-medium text-primary mb-1">Artisan marked job as completed</p>
-              <p className="text-xs text-muted-foreground">Please confirm the job has been done to your satisfaction. This will release payment to the artisan.</p>
+              <p className="font-medium text-primary mb-1">Artisan submitted proof of completion</p>
+              <p className="text-xs text-muted-foreground">Photos have been uploaded. Please review them above and confirm below if the job was done to your satisfaction. This will release payment to the artisan.</p>
             </div>
             <Button className="w-full" onClick={() => handleConfirmComplete(selectedJob)} disabled={releasePayment.isPending}>
               {releasePayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
@@ -438,7 +557,7 @@ const CustomerDashboard = () => {
 
         {/* Rate & Review */}
         {selectedJob?.status === 'confirmed' && selectedJob.artisan_id && (
-          <div className="pt-4 space-y-2">
+          <div className="pt-4 space-y-2 border-t">
             <Button variant="outline" className="w-full" onClick={() => { setSelectedJob(null); setReviewJob(selectedJob); }}>
               <Star className="h-4 w-4 mr-2" /> Rate This Job
             </Button>
@@ -501,7 +620,7 @@ const CustomerDashboard = () => {
           </div>
         )}
 
-        {/* File dispute button inside detail dialog (for active jobs without existing dispute) */}
+        {/* File dispute button inside detail dialog */}
         {selectedJob && !selectedJobDispute && ['assigned', 'inspection_paid', 'quoted', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed'].includes(selectedJob.status) && (
           <div className="pt-4 border-t">
             <Button
