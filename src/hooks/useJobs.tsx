@@ -51,7 +51,7 @@ export function useCustomerJobs() {
       if (!user) return [];
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug, requires_inspection, is_agency_job, default_inspection_fee, default_agency_fee)')
         .eq('customer_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -61,7 +61,7 @@ export function useCustomerJobs() {
   });
 }
 
-// Artisan: fetch assigned jobs
+// Artisan: fetch assigned jobs (includes customer contact info)
 export function useArtisanJobs() {
   const { user } = useAuth();
   return useQuery({
@@ -74,7 +74,17 @@ export function useArtisanJobs() {
         .eq('artisan_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Job[];
+
+      // Enrich with customer profiles separately
+      const jobs = data as Job[];
+      if (jobs.length === 0) return jobs;
+      const customerIds = [...new Set(jobs.map(j => j.customer_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone, address')
+        .in('user_id', customerIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+      return jobs.map(j => ({ ...j, customer_profile: profileMap[j.customer_id] || null })) as Job[];
     },
     enabled: !!user,
   });
