@@ -64,25 +64,48 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  const handlePayDraftFee = async (job: Job, useWalletCredit = false) => {
+  // Shared hybrid payment: deduct wallet credit first, charge remainder via Paystack
+  const handleHybridPayment = async (
+    job: Job,
+    feeAmount: number,
+    paymentType: 'inspection_fee' | 'job_payment'
+  ) => {
+    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
+    const creditToApply = Math.min(walletBalance, feeAmount);
+    const remaining = feeAmount - creditToApply;
+
+    // Fully covered by wallet
+    if (remaining === 0) {
+      payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
+      return;
+    }
+
+    // Partial wallet + Paystack for remainder
+    try {
+      if (creditToApply > 0) {
+        toast.info(`₦${(creditToApply / 100).toLocaleString()} wallet credit will be applied. Redirecting to pay the ₦${(remaining / 100).toLocaleString()} balance.`);
+      }
+      const result = await initPayment.mutateAsync({
+        job_id: job.id,
+        payment_type: paymentType,
+        amount: feeAmount,
+        wallet_credit_applied: creditToApply,
+      });
+      if (paymentType === 'inspection_fee') {
+        window.location.href = result.authorization_url;
+      } else {
+        window.open(result.authorization_url, '_blank');
+      }
+    } catch { /* handled */ }
+  };
+
+  const handlePayDraftFee = async (job: Job) => {
     const cat = (job as any).category;
     const feeAmount = job.inspection_fee
       ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
       ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
       ?? 0;
-    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
-    if (useWalletCredit) {
-      payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
-      return;
-    }
-    try {
-      const result = await initPayment.mutateAsync({
-        job_id: job.id,
-        payment_type: 'inspection_fee',
-        amount: feeAmount,
-      });
-      window.location.href = result.authorization_url;
-    } catch { /* handled */ }
+    await handleHybridPayment(job, feeAmount, 'inspection_fee');
   };
 
   const getDraftFeeDisplay = (job: Job) => {
