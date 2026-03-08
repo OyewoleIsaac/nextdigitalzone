@@ -145,6 +145,34 @@ const CustomerDashboard = () => {
           </Button>
         </div>
 
+        {/* Draft Jobs (Unpaid Booking Fee) */}
+        {draftJobs.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-warning" />
+              <span>Pending Payment ({draftJobs.length})</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              These requests are saved as drafts. Pay the ₦5,000 booking fee to activate them and send to an artisan.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {draftJobs.map((job) => (
+                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
+                  <Button
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={(e) => { e.stopPropagation(); handlePayBookingFee(job); }}
+                    disabled={initPayment.isPending}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                    Pay ₦5,000 to Activate
+                  </Button>
+                </JobCard>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Active Jobs */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
