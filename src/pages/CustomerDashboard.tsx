@@ -138,10 +138,7 @@ const CustomerDashboard = () => {
   const handlePayForJob = async (job: Job) => {
     const amount = job.quoted_amount || job.final_amount;
     if (!amount) return;
-    try {
-      const result = await initPayment.mutateAsync({ job_id: job.id, payment_type: 'job_payment', amount });
-      window.open(result.authorization_url, '_blank');
-    } catch { /* handled */ }
+    await handleHybridPayment(job, amount, 'job_payment');
   };
 
   // Accept quote & move to price_agreed — stay in dialog to prompt payment
