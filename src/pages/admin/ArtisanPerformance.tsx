@@ -101,7 +101,7 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
 
   const handleViewProfile = () => {
     onClose();
-    navigate(`/admin/artisans?user=${artisan.user_id}`);
+    navigate(`/admin/user/${artisan.user_id}`);
   };
 
   return (

@@ -33,6 +33,7 @@ import AdminJobs from "./pages/admin/Jobs";
 import AdminPayments from "./pages/admin/Payments";
 import ArtisanPerformance from "./pages/admin/ArtisanPerformance";
 import Disputes from "./pages/admin/Disputes";
+import UserProfile from "./pages/admin/UserProfile";
 import RequestService from "./pages/RequestService";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/admin/performance" element={<ArtisanPerformance />} />
               <Route path="/admin/disputes" element={<Disputes />} />
               <Route path="/admin/settings" element={<Settings />} />
+              <Route path="/admin/user/:userId" element={<UserProfile />} />
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />

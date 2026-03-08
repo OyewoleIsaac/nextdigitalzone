@@ -57,26 +57,27 @@ const REFUND_OPTIONS = [
 function PartyCard({
   label,
   profile,
-  role,
+  userId,
   navigate,
 }: {
   label: string;
   profile: { full_name: string; phone: string; address: string | null } | null;
-  role: 'customer' | 'artisan';
+  userId: string | null | undefined;
   navigate: (path: string) => void;
 }) {
   if (!profile) return null;
-  const profilePath = role === 'artisan' ? '/admin/artisans' : '/admin/clients';
   return (
     <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-        <button
-          onClick={() => navigate(profilePath)}
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          <ExternalLink className="h-3 w-3" /> View Profile
-        </button>
+        {userId && (
+          <button
+            onClick={() => navigate(`/admin/user/${userId}`)}
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" /> View Profile
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-1.5">
         <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -181,14 +182,14 @@ export default function DisputesPage() {
                       <PartyCard
                         label="Customer"
                         profile={d.customer_profile}
-                        role="customer"
+                        userId={d.customer_id}
                         navigate={navigate}
                       />
                       {d.artisan_profile && (
                         <PartyCard
                           label="Artisan"
                           profile={d.artisan_profile}
-                          role="artisan"
+                          userId={d.artisan_id}
                           navigate={navigate}
                         />
                       )}
@@ -256,14 +257,14 @@ export default function DisputesPage() {
                 <PartyCard
                   label="Customer"
                   profile={selected.customer_profile}
-                  role="customer"
+                  userId={selected.customer_id}
                   navigate={navigate}
                 />
                 {selected.artisan_profile && (
                   <PartyCard
                     label="Artisan"
                     profile={selected.artisan_profile}
-                    role="artisan"
+                    userId={selected.artisan_id}
                     navigate={navigate}
                   />
                 )}
