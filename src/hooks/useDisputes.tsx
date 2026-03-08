@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 
 export interface Dispute {
   id: string;
-  job_id: string;
+  job_id: string | null;
   customer_id: string;
-  artisan_id: string;
+  artisan_id: string | null;
   reason: string;
   status: 'open' | 'resolved' | 'closed';
   resolution_notes: string | null;
