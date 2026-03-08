@@ -77,18 +77,18 @@ const ArtisanDashboard = () => {
     setWorkmanshipCost('');
   };
 
-  // Artisan marks inspection done (waiting for customer confirmation)
+  // Artisan marks inspection done — sets to inspection_requested so customer can confirm
   const handleInspectionDone = async () => {
     if (!selectedJob || !user) return;
-    await updateJob.mutateAsync({ id: selectedJob.id, status: 'inspection_paid' as any });
+    await updateJob.mutateAsync({ id: selectedJob.id, status: 'inspection_requested' as any });
     await addHistory.mutateAsync({
       job_id: selectedJob.id,
       old_status: selectedJob.status,
-      new_status: 'inspection_paid',
+      new_status: 'inspection_requested',
       changed_by: user.id,
-      notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed',
+      notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed — awaiting customer confirmation',
     });
-    toast.success('Inspection marked done! Waiting for customer confirmation.');
+    toast.success('Inspection marked done! Waiting for customer to confirm.');
     setSelectedJob(null);
     setInspectionNotes('');
   };
