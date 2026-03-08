@@ -55,11 +55,35 @@ const AdminJobs = () => {
   const [assignDialogJob, setAssignDialogJob] = useState<Job | null>(null);
   const [rejectDialogJob, setRejectDialogJob] = useState<Job | null>(null);
   const [salaryDialogJob, setSalaryDialogJob] = useState<Job | null>(null);
+  const [releaseDialogJob, setReleaseDialogJob] = useState<Job | null>(null);
+  const [releaseArtisanBank, setReleaseArtisanBank] = useState<{ bank_name?: string; account_number?: string; account_name?: string } | null>(null);
+  const [loadingReleaseBank, setLoadingReleaseBank] = useState(false);
+  const [confirmingRelease, setConfirmingRelease] = useState(false);
   const [artisans, setArtisans] = useState<ArtisanOption[]>([]);
   const [loadingArtisans, setLoadingArtisans] = useState(false);
   const [searchArtisan, setSearchArtisan] = useState('');
   const [showAllArtisans, setShowAllArtisans] = useState(false);
   const [agreedSalary, setAgreedSalary] = useState('');
+
+  const openReleaseDialog = async (job: Job) => {
+    setReleaseDialogJob(job);
+    setReleaseArtisanBank(null);
+    if (job.artisan_id) {
+      setLoadingReleaseBank(true);
+      try {
+        const { data } = await supabase
+          .from('artisan_profiles')
+          .select('bank_name, bank_code, account_number, account_name')
+          .eq('user_id', job.artisan_id)
+          .maybeSingle();
+        setReleaseArtisanBank(data || {});
+      } catch {
+        setReleaseArtisanBank({});
+      } finally {
+        setLoadingReleaseBank(false);
+      }
+    }
+  };
 
   const fetchArtisans = async (job: Job) => {
     setAssignDialogJob(job);
