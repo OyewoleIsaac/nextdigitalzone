@@ -62,10 +62,14 @@ const NIGERIAN_BANKS = [
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useProfile();
   const { data: artisanProfile, refetch: refetchArtisan } = useArtisanProfile();
   const { data: categories } = useCategories();
+
+  // Default tab (support ?tab=bank deep link)
+  const defaultTab = searchParams.get('tab') || 'profile';
 
   // Profile info state
   const [fullName, setFullName] = useState('');
