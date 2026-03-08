@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useArtisanProfile } from '@/hooks/useProfile';
@@ -12,10 +12,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
+
+interface UploadedCert {
+  name: string;
+  path: string;
+  type: string;
+}
+
+const CERT_ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const CERT_MAX_MB = 10;
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -44,6 +54,14 @@ const ProfilePage = () => {
 
   // Avatar
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Certifications (artisan only)
+  const certInputRef = useRef<HTMLInputElement>(null);
+  const [certFiles, setCertFiles] = useState<UploadedCert[]>([]);
+  const [certUploading, setCertUploading] = useState(false);
+  const [certProgress, setCertProgress] = useState(0);
+  const [certDragOver, setCertDragOver] = useState(false);
+  const [certSubmitting, setCertSubmitting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -124,7 +142,6 @@ const ProfilePage = () => {
     }
     setSavingPassword(true);
     try {
-      // Verify current password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user!.email!,
         password: currentPassword,
@@ -179,6 +196,79 @@ const ProfilePage = () => {
     }
   };
 
+  // ── Certificate upload handlers ──────────────────────────────
+  const handleCertFiles = async (files: FileList | null) => {
+    if (!files || !user) return;
+    for (const file of Array.from(files)) {
+      if (!CERT_ACCEPTED.includes(file.type)) {
+        toast.error(`${file.name}: Only JPG, PNG, WebP, and PDF files are accepted`);
+        continue;
+      }
+      if (file.size > CERT_MAX_MB * 1024 * 1024) {
+        toast.error(`${file.name}: File must be under ${CERT_MAX_MB}MB`);
+        continue;
+      }
+      setCertUploading(true);
+      setCertProgress(0);
+      const ext = file.name.split('.').pop();
+      const path = `certificates/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage
+        .from('verification-docs')
+        .upload(path, file, { upsert: false });
+      if (error) {
+        toast.error(`Failed to upload ${file.name}: ${error.message}`);
+      } else {
+        setCertFiles(prev => [...prev, { name: file.name, path, type: file.type }]);
+        setCertProgress(100);
+        toast.success(`${file.name} uploaded`);
+      }
+      setCertUploading(false);
+    }
+  };
+
+  const removeCert = (path: string) => {
+    setCertFiles(prev => prev.filter(f => f.path !== path));
+    supabase.storage.from('verification-docs').remove([path]).catch(() => {});
+  };
+
+  const handleSaveCertificates = async () => {
+    if (!user) return;
+    if (certFiles.length === 0) {
+      toast.error('Please upload at least one certificate first');
+      return;
+    }
+    setCertSubmitting(true);
+    try {
+      // Find the most recent artisan submission for this user
+      const { data: submission } = await supabase
+        .from('artisan_submissions')
+        .select('id')
+        .eq('email', user.email as string)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (submission) {
+        await supabase.from('submission_attachments').insert(
+          certFiles.map(f => ({
+            submission_id: submission.id,
+            submission_type: 'artisan',
+            file_path: f.path,
+            file_name: f.name,
+            file_type: f.type,
+          }))
+        );
+      }
+
+      toast.success('Certificates saved! Our team will review your updated profile.');
+      setCertFiles([]);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save certificates');
+    } finally {
+      setCertSubmitting(false);
+    }
+  };
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
@@ -189,6 +279,7 @@ const ProfilePage = () => {
 
   const dashboardLink = profile?.role === 'artisan' ? '/artisan/dashboard' : '/dashboard';
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  const isArtisan = profile?.role === 'artisan';
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,7 +301,6 @@ const ProfilePage = () => {
 
       <main className="section-container py-8 max-w-2xl">
         <div className="flex items-center gap-4 mb-8">
-          {/* Avatar */}
           <div className="relative">
             <Avatar className="h-20 w-20 border-2 border-primary/20">
               <AvatarImage src={profile?.avatar_url || ''} />
@@ -238,9 +328,12 @@ const ProfilePage = () => {
         </div>
 
         <Tabs defaultValue="profile">
-          <TabsList className="w-full mb-6">
-            <TabsTrigger value="profile" className="flex-1"><User className="h-3.5 w-3.5 mr-1.5" />Profile Info</TabsTrigger>
+          <TabsList className={`w-full mb-6 ${isArtisan ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            <TabsTrigger value="profile" className="flex-1"><User className="h-3.5 w-3.5 mr-1.5" />Profile</TabsTrigger>
             <TabsTrigger value="location" className="flex-1"><MapPin className="h-3.5 w-3.5 mr-1.5" />Location</TabsTrigger>
+            {isArtisan && (
+              <TabsTrigger value="certificates" className="flex-1"><Award className="h-3.5 w-3.5 mr-1.5" />Certificates</TabsTrigger>
+            )}
             <TabsTrigger value="password" className="flex-1"><Lock className="h-3.5 w-3.5 mr-1.5" />Password</TabsTrigger>
           </TabsList>
 
@@ -267,7 +360,7 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                {profile?.role === 'artisan' && (
+                {isArtisan && (
                   <>
                     <Separator />
                     <p className="text-sm font-medium">Artisan Details</p>
@@ -308,7 +401,7 @@ const ProfilePage = () => {
               <CardHeader>
                 <CardTitle className="text-base">Your Location</CardTitle>
                 <CardDescription>
-                  {profile?.role === 'artisan'
+                  {isArtisan
                     ? 'Your location helps match you with nearby customers. Keep it up to date.'
                     : 'Update your default address for service requests.'}
                 </CardDescription>
@@ -332,6 +425,95 @@ const ProfilePage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Certificates Tab (artisans only) */}
+          {isArtisan && (
+            <TabsContent value="certificates">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Award className="h-4 w-4 text-primary" />
+                    Skill Certificates
+                  </CardTitle>
+                  <CardDescription>
+                    Upload certificates or proof of your trade skills. This is optional but helps build trust with customers.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Drop zone */}
+                  <div
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                      certDragOver
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                    }`}
+                    onClick={() => certInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setCertDragOver(true); }}
+                    onDragLeave={() => setCertDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setCertDragOver(false); handleCertFiles(e.dataTransfer.files); }}
+                  >
+                    <input
+                      ref={certInputRef}
+                      type="file"
+                      multiple
+                      accept=".jpg,.jpeg,.png,.webp,.pdf"
+                      className="hidden"
+                      onChange={(e) => handleCertFiles(e.target.files)}
+                    />
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm font-medium">Click to upload or drag & drop</p>
+                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF up to {CERT_MAX_MB}MB each</p>
+                  </div>
+
+                  {/* Upload progress */}
+                  {certUploading && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Uploading...</span>
+                        <span>{certProgress}%</span>
+                      </div>
+                      <Progress value={certProgress} className="h-1.5" />
+                    </div>
+                  )}
+
+                  {/* Staged files */}
+                  {certFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Ready to save ({certFiles.length})</p>
+                      {certFiles.map((file) => (
+                        <div key={file.path} className="flex items-center gap-3 p-3 rounded-lg bg-success/5 border border-success/20">
+                          {file.type.startsWith('image/') ? (
+                            <Image className="h-4 w-4 text-success shrink-0" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-success shrink-0" />
+                          )}
+                          <span className="text-sm flex-1 truncate">{file.name}</span>
+                          <CheckCircle className="h-4 w-4 text-success shrink-0" />
+                          <button
+                            type="button"
+                            onClick={() => removeCert(file.path)}
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleSaveCertificates}
+                    disabled={certSubmitting || certUploading || certFiles.length === 0}
+                    className="w-full"
+                  >
+                    {certSubmitting
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                      : <><Save className="h-4 w-4 mr-2" />Save Certificates</>}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Password Tab */}
           <TabsContent value="password">
