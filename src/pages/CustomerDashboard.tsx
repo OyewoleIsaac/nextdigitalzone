@@ -64,6 +64,19 @@ const CustomerDashboard = () => {
     }
   };
 
+  const handlePayBookingFee = async (job: Job) => {
+    try {
+      const result = await initPayment.mutateAsync({
+        job_id: job.id,
+        payment_type: 'inspection_fee',
+        amount: 500000, // ₦5,000 in kobo
+      });
+      window.location.href = result.authorization_url;
+    } catch {
+      // handled by hook
+    }
+  };
+
   const handlePayInspectionFee = async (job: Job) => {
     if (!job.inspection_fee) return;
     try {
