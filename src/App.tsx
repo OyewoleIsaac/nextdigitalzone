@@ -18,6 +18,7 @@ import VerifyAccount from "./pages/VerifyAccount";
 // User Dashboards
 import CustomerDashboard from "./pages/CustomerDashboard";
 import ArtisanDashboard from "./pages/ArtisanDashboard";
+import ProfilePage from "./pages/Profile";
 
 // Admin Pages
 import AdminLogin from "./pages/AdminLogin";
