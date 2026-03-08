@@ -39,6 +39,7 @@ const CustomerDashboard = () => {
   const [showGeneralDispute, setShowGeneralDispute] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
+  const { data: selectedJobDispute } = useDisputeForJob(selectedJob?.id);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
