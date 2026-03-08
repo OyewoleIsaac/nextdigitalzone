@@ -142,13 +142,13 @@ Deno.serve(async (req) => {
       `;
     }
 
-    // Use Lovable AI gateway to send email
+    // Use Lovable AI email sending API
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const emailResponse = await fetch('https://api.lovable.dev/v1/email/send', {
+    const emailResponse = await fetch('https://api.lovable.dev/v1/transactional-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,16 +162,18 @@ Deno.serve(async (req) => {
       }),
     });
 
+    const responseText = await emailResponse.text();
+    
     if (!emailResponse.ok) {
-      const errText = await emailResponse.text();
-      console.error('Email send failed:', errText);
+      console.error('Email send failed:', responseText);
       // Don't throw - email failure shouldn't block the approval action
-      return new Response(JSON.stringify({ success: false, error: errText }), {
+      return new Response(JSON.stringify({ success: false, error: responseText }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('Email sent successfully to:', email, 'status:', status);
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
