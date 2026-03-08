@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAllJobs, useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +16,7 @@ import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { JobRejectDialog } from '@/components/admin/JobRejectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench } from 'lucide-react';
+import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Job } from '@/hooks/useJobs';
 
@@ -43,6 +44,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 const AdminJobs = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const { data: jobs, isLoading } = useAllJobs(statusFilter);
@@ -81,7 +83,6 @@ const AdminJobs = () => {
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
       const withDistance: ArtisanOption[] = artisanData
-        // Only include artisans that have a matching profile (filter ghost artisans)
         .filter((a: any) => !!profileMap[a.user_id])
         .map((a: any) => ({
           ...a,
@@ -108,7 +109,7 @@ const AdminJobs = () => {
     await updateJob.mutateAsync({
       id: assignDialogJob.id,
       artisan_id: artisanUserId,
-      status: isAgency ? 'assigned' as any : 'assigned' as any,
+      status: 'assigned' as any,
       assigned_by: 'admin',
       admin_assigner_id: user.id,
       ...(isAgency ? { artisan_offer_status: 'pending' } : {}),
@@ -197,7 +198,6 @@ const AdminJobs = () => {
     return name.toLowerCase().includes(searchArtisan.toLowerCase());
   });
 
-  // Helper: fetch customer profile for a job
   const getCustomerDetails = (job: Job) => (job as any).customer_profile;
   const getArtisanDetails = (job: Job) => (job as any).artisan_profile;
 
@@ -241,6 +241,11 @@ const AdminJobs = () => {
                             <AlertCircle className="h-2.5 w-2.5" /> Disputed
                           </Badge>
                         )}
+                        {job.status === 'price_agreed' && (
+                          <Badge variant="outline" className="text-[10px] h-4 gap-0.5 border-warning/50 text-warning">
+                            <AlertCircle className="h-2.5 w-2.5" /> Awaiting Payment
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1">{job.description}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
@@ -248,24 +253,38 @@ const AdminJobs = () => {
                         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{job.address}</span>
                         <span>{format(new Date(job.created_at), 'MMM d, yyyy')}</span>
                       </div>
-                      {/* Participant info */}
+                      {/* Participant info — names are clickable links to their profiles */}
                       <div className="flex flex-wrap gap-4 mt-2">
                         {customerProfile && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <User className="h-3 w-3" />
-                            <span className="font-medium">{customerProfile.full_name}</span>
+                          <div className="flex items-center gap-1 text-xs">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <button
+                              onClick={() => navigate('/admin/clients')}
+                              className="font-medium text-primary hover:underline flex items-center gap-0.5"
+                              title="View customer submissions"
+                            >
+                              {customerProfile.full_name}
+                              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                            </button>
                             {customerProfile.phone && (
-                              <a href={`tel:${customerProfile.phone}`} className="flex items-center gap-0.5 text-primary">
+                              <a href={`tel:${customerProfile.phone}`} className="flex items-center gap-0.5 text-muted-foreground hover:text-primary ml-1">
                                 <Phone className="h-3 w-3" />{customerProfile.phone}
                               </a>
                             )}
                           </div>
                         )}
                         {artisanProfile && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Wrench className="h-3 w-3" />
-                            <span className="font-medium">{artisanProfile.full_name}</span>
-                            <Badge variant="outline" className="text-[10px] h-4">Artisan</Badge>
+                          <div className="flex items-center gap-1 text-xs">
+                            <Wrench className="h-3 w-3 text-muted-foreground" />
+                            <button
+                              onClick={() => navigate('/admin/artisans')}
+                              className="font-medium text-primary hover:underline flex items-center gap-0.5"
+                              title="View artisan submissions"
+                            >
+                              {artisanProfile.full_name}
+                              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                            </button>
+                            <Badge variant="outline" className="text-[10px] h-4 ml-1">Artisan</Badge>
                           </div>
                         )}
                       </div>
@@ -290,19 +309,16 @@ const AdminJobs = () => {
                           </Button>
                         </>
                       )}
-                      {/* Agency: set salary */}
                       {job.status === 'assigned' && !(job as any).agreed_salary && (
                         <Button size="sm" variant="outline" onClick={() => setSalaryDialogJob(job)}>
                           <DollarSign className="h-4 w-4 mr-1" /> Set Salary
                         </Button>
                       )}
-                      {/* Allocate materials after payment */}
                       {job.status === 'payment_escrowed' && !(job as any).materials_allocated_at && (
                         <Button size="sm" onClick={() => handleAllocateMaterials(job)} disabled={updateJob.isPending}>
                           <Package className="h-4 w-4 mr-1" /> Allocate Materials
                         </Button>
                       )}
-                      {/* Release workmanship after customer confirms */}
                       {job.status === 'confirmed' && !(job as any).workmanship_released_at && (
                         <Button size="sm" variant="outline" onClick={() => handleReleaseWorkmanship(job)} disabled={updateJob.isPending}>
                           <Wrench className="h-4 w-4 mr-1" /> Release Workmanship
@@ -359,7 +375,7 @@ const AdminJobs = () => {
         isPending={updateJob.isPending}
       />
 
-      {/* Set Agreed Salary Dialog (Agency jobs) */}
+      {/* Set Agreed Salary Dialog */}
       <Dialog open={!!salaryDialogJob} onOpenChange={(open) => !open && setSalaryDialogJob(null)}>
         <DialogContent>
           <DialogHeader>
@@ -436,7 +452,7 @@ const AdminJobs = () => {
                   )}
 
                   {filteredArtisans.length === 0 && artisans.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No available artisans found. Make sure artisans are registered and verified.</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">No available artisans found.</p>
                   ) : filteredArtisans.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No results match your search.</p>
                   ) : (
