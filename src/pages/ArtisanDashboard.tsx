@@ -336,6 +336,19 @@ const ArtisanDashboard = () => {
           </div>
         )}
 
+        {/* inspection_requested: artisan marked done, waiting for customer confirmation */}
+        {selectedJob?.status === 'inspection_requested' && (
+          <div className="pt-4 space-y-3 border-t">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+              <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-warning">Waiting for Customer Confirmation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">The customer needs to confirm the inspection was carried out before you can submit a quote.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* inspection_paid (customer confirmed inspection): submit quote — ONLY available here */}
         {selectedJob?.status === 'inspection_paid' && (
           <div className="pt-4 space-y-4 border-t">
