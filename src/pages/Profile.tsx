@@ -508,6 +508,89 @@ const ProfilePage = () => {
             </Card>
           </TabsContent>
 
+          {/* Bank Details Tab (artisans only) */}
+          {isArtisan && (
+            <TabsContent value="bank">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Bank Account Details
+                  </CardTitle>
+                  <CardDescription>
+                    Add your bank account so workmanship payments are transferred directly to you after job completion.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(artisanProfile as any)?.account_number ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-success/5 border border-success/20">
+                      <CheckCircle className="h-5 w-5 text-success shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-success">Bank account linked</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {(artisanProfile as any).bank_name} · ••••••{(artisanProfile as any).account_number?.slice(-4)} · {(artisanProfile as any).account_name}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <Alert variant="destructive" className="bg-destructive/5 border-destructive/30">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        No bank account linked. You won't receive payment transfers until you add your bank details.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Select value={bankCode} onValueChange={setBankCode}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your bank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NIGERIAN_BANKS.map((bank) => (
+                          <SelectItem key={bank.code} value={bank.code}>{bank.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="acct-number">Account Number</Label>
+                    <Input
+                      id="acct-number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={11}
+                      placeholder="0123456789"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter your 10-digit NUBAN account number</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="acct-name">Account Name</Label>
+                    <Input
+                      id="acct-name"
+                      type="text"
+                      placeholder="e.g. John Adewale Okafor"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter the account name exactly as it appears on your bank account</p>
+                  </div>
+
+                  <Button onClick={handleSaveBank} disabled={savingBank} className="w-full">
+                    {savingBank
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                      : <><Save className="h-4 w-4 mr-2" />{(artisanProfile as any)?.account_number ? 'Update Bank Account' : 'Save Bank Account'}</>}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
           {/* Certificates Tab (artisans only) */}
           {isArtisan && (
             <TabsContent value="certificates">
