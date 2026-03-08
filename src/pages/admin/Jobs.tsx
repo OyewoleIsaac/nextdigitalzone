@@ -16,7 +16,7 @@ import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { JobRejectDialog } from '@/components/admin/JobRejectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink } from 'lucide-react';
+import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink, Building2, AlertTriangle, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Job } from '@/hooks/useJobs';
 
