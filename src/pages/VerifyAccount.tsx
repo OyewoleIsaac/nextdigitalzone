@@ -87,24 +87,33 @@ const VerifyAccount = () => {
 
     setSubmitting(true);
     try {
-      // Find the most recent artisan submission for this user
-      const { data: submission } = await supabase
-        .from('artisan_submissions')
-        .select('id')
-        .eq('email', user.email as string)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Get submission ID - first try localStorage (set during signup), then fall back to querying
+      let submissionId = localStorage.getItem('pending_artisan_submission_id');
 
-      if (submission) {
+      if (!submissionId) {
+        // Fallback: try to find by user metadata stored in submission
+        const { data: submission } = await supabase
+          .from('artisan_submissions')
+          .select('id')
+          .eq('email', user.email as string)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        submissionId = submission?.id ?? null;
+      }
+
+      if (submissionId) {
         const attachments = uploadedFiles.map(f => ({
-          submission_id: submission.id,
+          submission_id: submissionId as string,
           submission_type: 'artisan',
           file_path: f.path,
           file_name: f.name,
           file_type: f.type,
         }));
-        await supabase.from('submission_attachments').insert(attachments);
+        const { error } = await supabase.from('submission_attachments').insert(attachments);
+        if (error) console.error('Attachment insert error:', error);
+        // Clear the stored submission ID after use
+        localStorage.removeItem('pending_artisan_submission_id');
       }
 
       toast.success("Certificate submitted! Our team will review your profile shortly.");
@@ -118,6 +127,7 @@ const VerifyAccount = () => {
   };
 
   const handleSkip = () => {
+    localStorage.removeItem('pending_artisan_submission_id');
     toast.info('You can upload your certificate anytime from your Profile page');
     navigate('/artisan/dashboard');
   };

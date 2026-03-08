@@ -129,8 +129,12 @@ const Signup = () => {
         id_image_path: idData.idImagePath,
       };
 
+      // Pre-generate submission ID so we can link attachments without needing a SELECT
+      const artisanSubmissionId = crypto.randomUUID();
+
       if (role === 'artisan') {
-        const { data: submissionData, error: submissionError } = await supabase.from('artisan_submissions').insert({
+        const { error: submissionError } = await supabase.from('artisan_submissions').insert({
+          id: artisanSubmissionId,
           full_name: fullName,
           email,
           phone,
@@ -140,17 +144,17 @@ const Signup = () => {
           years_experience: yearsExperience ? parseInt(yearsExperience) : null,
           status: 'pending',
           metadata: { ...idMeta, bio: bio || null },
-        }).select('id').single();
+        });
         if (submissionError) throw new Error(`Submission failed: ${submissionError.message}`);
 
         // Save ID image as attachment so admin can view it
-        if (submissionData && idData.idImagePath) {
+        if (idData.idImagePath) {
           await supabase.from('submission_attachments').insert({
-            submission_id: submissionData.id,
+            submission_id: artisanSubmissionId,
             submission_type: 'artisan',
             file_path: idData.idImagePath,
             file_name: idData.idImageName || 'ID Document',
-            file_type: 'image/jpeg',
+            file_type: idData.idImagePath.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
           });
         }
 
@@ -165,7 +169,10 @@ const Signup = () => {
         });
         if (artisanProfileError) console.warn('Artisan profile insert warning:', artisanProfileError.message);
       } else {
-        const { data: clientSubmissionData, error: submissionError } = await supabase.from('client_submissions').insert({
+        // Pre-generate ID so we can link the attachment without needing a SELECT after insert
+        const clientSubmissionId = crypto.randomUUID();
+        const { error: submissionError } = await supabase.from('client_submissions').insert({
+          id: clientSubmissionId,
           full_name: fullName,
           email,
           phone,
@@ -173,13 +180,13 @@ const Signup = () => {
           nin: idData.idNumber,
           status: 'pending',
           metadata: idMeta,
-        }).select('id').single();
+        });
         if (submissionError) throw new Error(`Submission failed: ${submissionError.message}`);
 
         // Save ID image as attachment so admin can view it
-        if (clientSubmissionData && idData.idImagePath) {
+        if (idData.idImagePath) {
           await supabase.from('submission_attachments').insert({
-            submission_id: clientSubmissionData.id,
+            submission_id: clientSubmissionId,
             submission_type: 'client',
             file_path: idData.idImagePath,
             file_name: idData.idImageName || 'ID Document',
@@ -191,6 +198,8 @@ const Signup = () => {
       toast.success('Account created! Please verify your email to continue.');
       // Only artisans go to certificate upload page; customers go straight to dashboard
       if (role === 'artisan') {
+        // Store submission ID so VerifyAccount can link the certificate attachment
+        localStorage.setItem('pending_artisan_submission_id', artisanSubmissionId);
         navigate('/verify-account');
       } else {
         navigate('/dashboard');
