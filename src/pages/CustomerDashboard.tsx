@@ -262,7 +262,6 @@ const CustomerDashboard = () => {
                 );
               })}
             </div>
-            </div>
           </div>
         )}
 
