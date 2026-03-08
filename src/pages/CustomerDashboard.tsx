@@ -5,14 +5,16 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, History } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
 import { DisputeDialog } from '@/components/jobs/DisputeDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
+import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
 
