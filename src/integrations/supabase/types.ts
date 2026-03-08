@@ -64,6 +64,10 @@ export type Database = {
       }
       artisan_profiles: {
         Row: {
+          account_name: string | null
+          account_number: string | null
+          bank_code: string | null
+          bank_name: string | null
           bio: string | null
           cancelled_jobs: number
           category_id: string | null
@@ -83,6 +87,10 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
           bio?: string | null
           cancelled_jobs?: number
           category_id?: string | null
@@ -102,6 +110,10 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
           bio?: string | null
           cancelled_jobs?: number
           category_id?: string | null
