@@ -129,9 +129,10 @@ const Signup = () => {
         id_image_path: idData.idImagePath,
       };
 
+      // Pre-generate submission ID so we can link attachments without needing a SELECT
+      const artisanSubmissionId = crypto.randomUUID();
+
       if (role === 'artisan') {
-        // Pre-generate ID so we can link the attachment without needing a SELECT after insert
-        const artisanSubmissionId = crypto.randomUUID();
         const { error: submissionError } = await supabase.from('artisan_submissions').insert({
           id: artisanSubmissionId,
           full_name: fullName,
