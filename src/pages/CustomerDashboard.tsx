@@ -66,8 +66,13 @@ const CustomerDashboard = () => {
 
   // Pay upfront fee (inspection or agency) for draft jobs
   const handlePayDraftFee = async (job: Job, useWalletCredit = false) => {
-    // Find the fee amount from the payment record or job
-    const feeAmount = job.inspection_fee || 500000;
+    // Use the fee stored on the job first; fall back to category default; never default to agency fee (₦5,000)
+    const cat = (job as any).category;
+    const feeAmount = job.inspection_fee
+      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
+      ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
+      ?? 0;
+    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
     if (useWalletCredit) {
       payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
       return;
@@ -80,6 +85,15 @@ const CustomerDashboard = () => {
       });
       window.location.href = result.authorization_url;
     } catch { /* handled */ }
+  };
+
+  // Helper: get the correct display fee for a draft job
+  const getDraftFeeDisplay = (job: Job) => {
+    const cat = (job as any).category;
+    return job.inspection_fee
+      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
+      ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
+      ?? 0;
   };
 
   // Customer confirms inspection happened
