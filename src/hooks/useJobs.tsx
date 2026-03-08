@@ -80,7 +80,7 @@ export function useArtisanJobs() {
   });
 }
 
-// Admin: fetch all jobs
+// Admin: fetch all jobs (excludes 'draft' unless explicitly filtered)
 export function useAllJobs(statusFilter?: string) {
   return useQuery({
     queryKey: ['all-jobs', statusFilter],
@@ -91,6 +91,9 @@ export function useAllJobs(statusFilter?: string) {
         .order('created_at', { ascending: false });
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter as any);
+      } else {
+        // Exclude draft jobs from admin view — they haven't paid yet
+        query = query.neq('status', 'draft' as any);
       }
       const { data, error } = await query;
       if (error) throw error;
