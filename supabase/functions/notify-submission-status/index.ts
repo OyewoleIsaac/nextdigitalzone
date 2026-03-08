@@ -98,64 +98,53 @@ Deno.serve(async (req) => {
       `;
     }
 
-    // Use Supabase Admin API to send email via the auth system's SMTP
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // Use Lovable Cloud email API
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
+    const projectId = Deno.env.get('SUPABASE_URL')?.split('//')[1]?.split('.')[0];
+
+    // Try Lovable's email API
+    const emailResponse = await fetch(`https://api.lovable.dev/projects/${projectId}/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+      },
+      body: JSON.stringify({
+        to: email,
+        subject,
+        html: htmlBody,
+      }),
     });
 
-    // Find user by email to send them a magic-link-style notification
-    const { data: usersData, error: listErr } = await adminClient.auth.admin.listUsers();
-    let userId: string | null = null;
-    if (!listErr && usersData?.users) {
-      const found = usersData.users.find(u => u.email === email);
-      userId = found?.id || null;
-    }
+    const responseText = await emailResponse.text();
+    console.log('Email API response:', emailResponse.status, responseText);
 
-    if (userId) {
-      // Send a custom email using Supabase's email system via admin generateLink
-      // We generate a "magic link" token but embed our custom notification content
-      // by using the admin API's email send capability
-      const { error: emailErr } = await adminClient.auth.admin.generateLink({
-        type: 'magiclink',
-        email,
-        options: {
-          redirectTo: 'https://nextdigitalzone.lovable.app/login',
-          data: { notification_only: true },
-        },
-      });
-      
-      if (emailErr) {
-        console.warn('Could not generate link for email:', emailErr.message);
-      }
-    }
-
-    // Log the notification attempt regardless
-    console.log(`Notification for ${email}: status=${status}, role=${role}, userId=${userId || 'not found'}`);
-    
-    // Store notification in admin_logs for audit trail
-    const { error: logErr } = await adminClient
-      .from('admin_logs')
-      .insert({
-        action: `submission_${status}`,
-        target_type: role === 'artisan' ? 'artisan_submission' : 'client_submission',
-        details: {
-          email,
-          full_name,
-          status,
-          role,
-          rejection_reason: rejection_reason || null,
-          notification_sent: !!userId,
-        },
+    if (!emailResponse.ok) {
+      // Fallback: log to admin_logs for audit trail
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
       });
 
-    if (logErr) {
-      console.warn('Could not log notification:', logErr.message);
+      await adminClient.from('admin_logs').insert({
+        action: `email_notification_${status}`,
+        target_type: `${role}_submission`,
+        details: { email, full_name, status, role, rejection_reason, email_error: responseText },
+      });
+
+      console.warn('Email delivery failed, logged to admin_logs');
+      return new Response(JSON.stringify({ success: false, logged: true, error: responseText }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, email_delivery: !!userId }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
