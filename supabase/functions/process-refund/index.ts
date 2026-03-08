@@ -35,7 +35,7 @@ serve(async (req) => {
     if (!adminCheck) throw new Error('Not an admin');
 
     const { dispute_id, refund_type } = await req.json();
-    // refund_type: 'partial' (₦4,700) | 'full' (₦5,000) | 'none'
+    // refund_type: 'partial' (₦4,700) | 'full' (₦5,000) | 'wallet_credit' (₦5,000 credit, no Paystack fee) | 'none'
 
     if (!dispute_id) throw new Error('dispute_id is required');
 
@@ -61,7 +61,54 @@ serve(async (req) => {
 
     let refundResult = null;
 
-    if (refund_type !== 'none' && payment?.paystack_reference) {
+    if (refund_type === 'wallet_credit') {
+      // Issue ₦5,000 as platform wallet credit — no Paystack fee, no loss to admin
+      const creditAmount = BOOKING_FEE; // full ₦5,000 in kobo
+
+      // Insert wallet transaction
+      const { error: walletTxErr } = await supabase
+        .from('wallet_transactions')
+        .insert({
+          user_id: dispute.customer_id,
+          amount: creditAmount,
+          type: 'credit',
+          description: 'Refund credit for unserviced booking — dispute #' + dispute_id.slice(0, 8),
+          reference: dispute_id,
+        });
+
+      if (walletTxErr) throw new Error('Failed to create wallet transaction: ' + walletTxErr.message);
+
+      // Update profile wallet_balance
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('wallet_balance')
+        .eq('user_id', dispute.customer_id)
+        .single();
+
+      const currentBalance = profile?.wallet_balance ?? 0;
+
+      await supabase
+        .from('profiles')
+        .update({ wallet_balance: currentBalance + creditAmount })
+        .eq('user_id', dispute.customer_id);
+
+      // Mark payment as refunded
+      if (payment) {
+        await supabase
+          .from('payments')
+          .update({ status: 'refunded' })
+          .eq('id', payment.id);
+      }
+
+      // Cancel job
+      await supabase
+        .from('jobs')
+        .update({ status: 'cancelled', cancellation_reason: `Wallet credit refund approved by admin. Reason: ${dispute.reason}` })
+        .eq('id', dispute.job_id);
+
+      refundResult = { type: 'wallet_credit', amount: creditAmount };
+
+    } else if (refund_type !== 'none' && payment?.paystack_reference) {
       const refundAmount = refund_type === 'full' ? BOOKING_FEE : REFUNDABLE_AMOUNT;
 
       const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY');
@@ -105,9 +152,11 @@ serve(async (req) => {
     // Resolve the dispute
     const resolutionNote = refund_type === 'none'
       ? 'Admin reviewed and closed. No refund issued.'
-      : refund_type === 'full'
-        ? `Full refund of ₦5,000 issued to customer.`
-        : `Partial refund of ₦4,700 issued (₦300 processing fee deducted).`;
+      : refund_type === 'wallet_credit'
+        ? `Full ₦5,000 issued as platform wallet credit. No Paystack fees deducted.`
+        : refund_type === 'full'
+          ? `Full refund of ₦5,000 issued to customer's original payment method.`
+          : `Partial refund of ₦4,700 issued (₦300 processing fee deducted).`;
 
     await supabase
       .from('disputes')
