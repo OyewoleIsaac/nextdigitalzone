@@ -197,16 +197,15 @@ const RequestService = () => {
                             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                           </div>
                         }>
-                          <LeafletMap
-                            center={[lat, lng]}
-                            zoom={13}
-                            markerPosition={[lat, lng]}
-                            onMapClick={(lat, lng) => {
-                              setLat(lat);
-                              setLng(lng);
-                            }}
-                            height="220px"
-                          />
+                          <div className="h-[220px] rounded-lg border overflow-hidden">
+                            <LeafletMap
+                              position={{ lat, lng }}
+                              onLocationSelect={(newLat, newLng) => {
+                                setLat(newLat);
+                                setLng(newLng);
+                              }}
+                            />
+                          </div>
                         </Suspense>
                       </div>
                     </div>
