@@ -66,8 +66,13 @@ const CustomerDashboard = () => {
 
   // Pay upfront fee (inspection or agency) for draft jobs
   const handlePayDraftFee = async (job: Job, useWalletCredit = false) => {
-    // Find the fee amount from the payment record or job
-    const feeAmount = job.inspection_fee || 500000;
+    // Use the fee stored on the job first; fall back to category default; never default to agency fee (₦5,000)
+    const cat = (job as any).category;
+    const feeAmount = job.inspection_fee
+      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
+      ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
+      ?? 0;
+    if (!feeAmount) { toast.error('Could not determine the fee amount. Please contact support.'); return; }
     if (useWalletCredit) {
       payWithWallet.mutate({ job_id: job.id, amount: feeAmount });
       return;
@@ -80,6 +85,15 @@ const CustomerDashboard = () => {
       });
       window.location.href = result.authorization_url;
     } catch { /* handled */ }
+  };
+
+  // Helper: get the correct display fee for a draft job
+  const getDraftFeeDisplay = (job: Job) => {
+    const cat = (job as any).category;
+    return job.inspection_fee
+      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
+      ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
+      ?? 0;
   };
 
   // Customer confirms inspection happened
@@ -215,33 +229,38 @@ const CustomerDashboard = () => {
             </h2>
             <p className="text-sm text-muted-foreground mb-4">These requests are saved as drafts. Pay the required fee to send them to our team.</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              {draftJobs.map((job) => (
-                <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
-                  <div className="flex gap-2 mt-2">
-                    {walletBalance >= (job.inspection_fee || 500000) ? (
-                      <>
-                        <Button size="sm" className="flex-1" variant="outline"
+              {draftJobs.map((job) => {
+                const draftFee = getDraftFeeDisplay(job);
+                return (
+                  <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)}>
+                    <div className="flex gap-2 mt-2">
+                      {draftFee > 0 && walletBalance >= draftFee ? (
+                        <>
+                          <Button size="sm" className="flex-1" variant="outline"
+                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
+                            disabled={initPayment.isPending || payWithWallet.isPending}>
+                            <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
+                          </Button>
+                          <Button size="sm" className="flex-1"
+                            onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
+                            disabled={payWithWallet.isPending || initPayment.isPending}>
+                            <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" className="w-full"
                           onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                          disabled={initPayment.isPending || payWithWallet.isPending}>
-                          <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay by Card
+                          disabled={initPayment.isPending || !draftFee}>
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          {draftFee > 0
+                            ? `Pay ₦${(draftFee / 100).toLocaleString()} to Activate`
+                            : 'Submit Request (No Fee)'}
                         </Button>
-                        <Button size="sm" className="flex-1"
-                          onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, true); }}
-                          disabled={payWithWallet.isPending || initPayment.isPending}>
-                          <Wallet className="h-3.5 w-3.5 mr-1.5" /> Pay with Credit
-                        </Button>
-                      </>
-                    ) : (
-                      <Button size="sm" className="w-full"
-                        onClick={(e) => { e.stopPropagation(); handlePayDraftFee(job, false); }}
-                        disabled={initPayment.isPending}>
-                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                        Pay ₦{((job.inspection_fee || 500000) / 100).toLocaleString()} to Activate
-                      </Button>
-                    )}
-                  </div>
-                </JobCard>
-              ))}
+                      )}
+                    </div>
+                  </JobCard>
+                );
+              })}
             </div>
           </div>
         )}

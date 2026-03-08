@@ -158,6 +158,8 @@ export function useCreateJob() {
       address: string;
       latitude: number;
       longitude: number;
+      inspection_fee?: number | null;
+      requires_inspection?: boolean;
     }) => {
       const { data: result, error } = await supabase
         .from('jobs')

@@ -88,6 +88,8 @@ const RequestService = () => {
         address,
         latitude: lat,
         longitude: lng,
+        inspection_fee: requiresPayment ? paymentAmount : null,
+        requires_inspection: selectedCategory?.requires_inspection ?? false,
       });
 
       const jobId = (job as any).id;
