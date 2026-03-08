@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
 
@@ -38,6 +38,8 @@ const RequestService = () => {
   const [addressVerified, setAddressVerified] = useState(false);
   const [step, setStep] = useState<'form' | 'payment'>('form');
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [pendingJobTitle, setPendingJobTitle] = useState('');
+  const [pendingJobAddress, setPendingJobAddress] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -69,7 +71,7 @@ const RequestService = () => {
     }
 
     try {
-      // Create the job first
+      // Create the job as 'draft' — NOT visible to admin yet
       const job = await createJob.mutateAsync({
         customer_id: user.id,
         category_id: categoryId,
@@ -81,6 +83,8 @@ const RequestService = () => {
       });
 
       setPendingJobId((job as any).id);
+      setPendingJobTitle(title);
+      setPendingJobAddress(address);
       setStep('payment');
     } catch {
       // error handled by hook
@@ -95,10 +99,17 @@ const RequestService = () => {
         payment_type: 'inspection_fee',
         amount: INSPECTION_FEE,
       });
+      // Redirect to Paystack payment page
       window.location.href = result.authorization_url;
     } catch {
       // handled by hook
     }
+  };
+
+  const handlePayLater = () => {
+    // Job stays as 'draft' in the DB. Customer can pay from their dashboard later.
+    toast.info('Request saved as draft. Pay the booking fee from your dashboard to activate it.');
+    navigate('/dashboard');
   };
 
   if (authLoading) {
@@ -219,11 +230,11 @@ const RequestService = () => {
                     ₦5,000 Booking / Inspection Fee Required
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    A one-time booking fee of <strong>₦5,000</strong> is required to confirm your service request and pay the artisan for their initial inspection visit.
+                    A one-time <strong>₦5,000 booking fee</strong> is required to confirm your request and dispatch an artisan for the initial inspection visit.
                   </p>
                   <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                     <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                    If no artisan responds within 24 hours, you can request a full refund via the dispute system.
+                    Your request will only be sent to admin after payment is confirmed.
                   </div>
                 </div>
 
@@ -244,19 +255,21 @@ const RequestService = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-primary" />
-                Pay Booking Fee
+                Pay Booking Fee to Activate Request
               </CardTitle>
-              <CardDescription>Complete the ₦5,000 booking fee to confirm your service request</CardDescription>
+              <CardDescription>
+                Your request has been saved as a <strong>draft</strong>. Pay the ₦5,000 booking fee to send it to an artisan.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Service</span>
-                  <span className="font-medium">{title}</span>
+                  <span className="font-medium">{pendingJobTitle}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Location</span>
-                  <span className="font-medium text-right max-w-[200px] truncate">{address}</span>
+                  <span className="font-medium text-right max-w-[200px] truncate">{pendingJobAddress}</span>
                 </div>
                 <div className="flex justify-between text-sm border-t border-border pt-3 font-bold">
                   <span>Booking / Inspection Fee</span>
@@ -271,7 +284,11 @@ const RequestService = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>If no artisan responds within 24 hours, open a dispute from your dashboard to request a refund.</span>
+                  <span>If no artisan responds within 24 hours, open a dispute from your dashboard to request a full refund.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>Choosing "Pay Later" saves your draft. Your request will <strong>not</strong> be sent to admin until payment is made.</span>
                 </div>
               </div>
 
@@ -279,16 +296,17 @@ const RequestService = () => {
                 {initPayment.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirecting to payment...</>
                 ) : (
-                  <><CreditCard className="h-4 w-4 mr-2" />Pay ₦5,000 Now</>
+                  <><CreditCard className="h-4 w-4 mr-2" />Pay ₦5,000 Now & Activate Request</>
                 )}
               </Button>
 
               <Button
-                variant="ghost"
+                variant="outline"
                 className="w-full text-muted-foreground"
-                onClick={() => navigate('/dashboard')}
+                onClick={handlePayLater}
               >
-                Pay Later (Request will stay pending)
+                <Clock className="h-4 w-4 mr-2" />
+                Save as Draft — Pay Later from Dashboard
               </Button>
             </CardContent>
           </Card>
