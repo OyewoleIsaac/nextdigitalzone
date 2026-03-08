@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, History } from 'lucide-react';
+import { Hammer, LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText } from 'lucide-react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
@@ -28,8 +28,8 @@ const CustomerDashboard = () => {
   const addHistory = useAddJobHistory();
   const initPayment = useInitializePayment();
   const releasePayment = useReleasePayment();
-  const { balance: walletBalance, transactions: walletTx } = useWallet();
   const payWithWallet = usePayWithWalletCredit();
+  const { balance: walletBalance, transactions: walletTxns } = useWallet();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [disputeJob, setDisputeJob] = useState<Job | null>(null);
@@ -172,11 +172,13 @@ const CustomerDashboard = () => {
               </CardTitle>
               <CardDescription>Credits you can use to pay the booking fee on future service requests.</CardDescription>
             </CardHeader>
-            {walletTx.length > 0 && (
+            {walletTxns.length > 0 && (
               <CardContent className="pt-0">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Transaction History</p>
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <ReceiptText className="h-3 w-3" /> Transaction History
+                </p>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {walletTx.map((tx) => (
+                  {walletTxns.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between text-xs rounded border p-2">
                       <span className="text-muted-foreground truncate max-w-[200px]">{tx.description}</span>
                       <span className={tx.type === 'credit' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
