@@ -1,52 +1,17 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { JobStatusBadge } from './JobStatusBadge';
+import { JobPhotos } from './JobPhotos';
 import { useJobHistory } from '@/hooks/useJobs';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Calendar, Clock, Wrench, Package, Camera, Image } from 'lucide-react';
+import { MapPin, Calendar, Clock, Wrench, Package, Camera } from 'lucide-react';
 import type { Job } from '@/hooks/useJobs';
-import { useState } from 'react';
 
 interface JobDetailDialogProps {
   job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children?: React.ReactNode;
-}
-
-function PhotoPreview({ url, label }: { url: string; label: string }) {
-  const [enlarged, setEnlarged] = useState(false);
-  return (
-    <>
-      <div
-        className="cursor-pointer group relative rounded-lg overflow-hidden border bg-muted/40"
-        onClick={() => setEnlarged(true)}
-      >
-        <img
-          src={url}
-          alt={label}
-          className="w-full h-32 object-cover group-hover:opacity-90 transition-opacity"
-        />
-        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1 px-2 flex items-center gap-1">
-          <Image className="h-3 w-3" /> {label}
-        </div>
-      </div>
-      {/* Enlarged lightbox */}
-      {enlarged && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setEnlarged(false)}
-        >
-          <img
-            src={url}
-            alt={label}
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-          />
-          <p className="absolute bottom-6 text-white text-sm opacity-70">Click anywhere to close</p>
-        </div>
-      )}
-    </>
-  );
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetailDialogProps) {
@@ -58,7 +23,6 @@ export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetail
   const workmanshipCost = (job as any).workmanship_cost as number | null;
   const hasBreakdown = !!(materialCost || workmanshipCost);
 
-  // Resolve photo URLs — stored as full signed URLs or storage paths
   const photoBefore = job.photo_before;
   const photoAfter = job.photo_after;
 
@@ -157,10 +121,7 @@ export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetail
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
                   <Camera className="h-4 w-4" /> Job Photos
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {photoBefore && <PhotoPreview url={photoBefore} label="Before" />}
-                  {photoAfter && <PhotoPreview url={photoAfter} label="After" />}
-                </div>
+                <JobPhotos photoBefore={photoBefore} photoAfter={photoAfter} />
                 {photoBefore && !photoAfter && (
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> "After" photo not yet uploaded

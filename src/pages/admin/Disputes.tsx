@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAllDisputes, useProcessRefund } from '@/hooks/useDisputes';
+import { useAllDisputes, useProcessRefund, useResolveDispute } from '@/hooks/useDisputes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet, User, Phone } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet, User, CheckSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Dispute } from '@/hooks/useDisputes';
 
@@ -44,6 +44,7 @@ const REFUND_OPTIONS = [
 export default function DisputesPage() {
   const { data: disputes, isLoading } = useAllDisputes();
   const processRefund = useProcessRefund();
+  const resolveDispute = useResolveDispute();
   const [selected, setSelected] = useState<Dispute | null>(null);
   const [resolution, setResolution] = useState('');
   const [refundType, setRefundType] = useState<'wallet_credit' | 'partial' | 'full' | 'none'>('wallet_credit');
@@ -55,9 +56,18 @@ export default function DisputesPage() {
       refund_type: refundType,
       resolution_notes: resolution,
     });
+    // Dialog closes via onSuccess invalidation + state reset
     setSelected(null);
     setResolution('');
     setRefundType('wallet_credit');
+  };
+
+  const handleManualClose = async (dispute: Dispute) => {
+    await resolveDispute.mutateAsync({
+      id: dispute.id,
+      status: 'closed',
+      resolution_notes: 'Admin manually confirmed issue resolved.',
+    });
   };
 
   const statusColor = (s: string) =>
@@ -135,17 +145,29 @@ export default function DisputesPage() {
                       {d.job_id ? `Job ID: ${d.job_id.slice(0, 8)}…` : <span className="italic">General complaint (no job)</span>}
                     </p>
                   </div>
-                  {d.status === 'open' && (
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setSelected(d);
-                      // Pre-select based on customer preference, fallback to wallet_credit for refund requests
-                      if (d.preferred_refund_type === 'cash_refund') setRefundType('partial');
-                      else if (d.preferred_refund_type === 'wallet_credit') setRefundType('wallet_credit');
-                      else setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none');
-                    }}>
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Resolve
-                    </Button>
-                  )}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {d.status === 'open' && (
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setSelected(d);
+                        if (d.preferred_refund_type === 'cash_refund') setRefundType('partial');
+                        else if (d.preferred_refund_type === 'wallet_credit') setRefundType('wallet_credit');
+                        else setRefundType(isRefundRequest(d.reason) ? 'wallet_credit' : 'none');
+                      }}>
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Resolve
+                      </Button>
+                    )}
+                    {d.status === 'resolved' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-success border-success/30"
+                        onClick={() => handleManualClose(d)}
+                        disabled={resolveDispute.isPending}
+                      >
+                        <CheckSquare className="h-3.5 w-3.5 mr-1.5" /> Mark Closed
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -154,7 +176,7 @@ export default function DisputesPage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Resolve Dispute</DialogTitle>
           </DialogHeader>

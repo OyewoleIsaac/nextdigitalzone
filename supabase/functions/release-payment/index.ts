@@ -108,10 +108,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Release payment — update status
+    // === WORKMANSHIP SPLIT: 80% to artisan, 20% platform fee ===
+    // Materials portion goes 100% to cover costs; only workmanship is split
+    const workmanshipCost = job.workmanship_cost || 0;
+    const materialCost = job.material_cost || 0;
+
+    // Artisan receives: full materials + 80% of workmanship
+    const artisanWorkmanshipShare = Math.round(workmanshipCost * 0.80);
+    const platformWorkmanshipFee = workmanshipCost - artisanWorkmanshipShare;
+    const artisanTotal = materialCost + artisanWorkmanshipShare;
+
+    // Update payment record with correct artisan amount
+    const updatedArtisanAmount = artisanTotal > 0 ? artisanTotal : payment.artisan_amount;
+    const updatedCommission = artisanTotal > 0 
+      ? (payment.amount - updatedArtisanAmount)
+      : payment.commission_amount;
+
     await adminSupabase
       .from("payments")
-      .update({ status: "released", released_at: new Date().toISOString() })
+      .update({
+        status: "released",
+        released_at: new Date().toISOString(),
+        artisan_amount: updatedArtisanAmount,
+        commission_amount: updatedCommission,
+      })
       .eq("id", payment.id);
 
     // Update job
@@ -120,12 +140,16 @@ Deno.serve(async (req) => {
       guarantee_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     }).eq("id", job_id);
 
+    const notes = workmanshipCost > 0
+      ? `Payment released — Materials: ₦${(materialCost / 100).toLocaleString()} (100%), Workmanship to artisan: ₦${(artisanWorkmanshipShare / 100).toLocaleString()} (80%), Platform fee: ₦${(platformWorkmanshipFee / 100).toLocaleString()} (20%)`
+      : `Payment of ₦${(payment.amount / 100).toLocaleString()} released to artisan`;
+
     await supabase.from("job_status_history").insert({
       job_id,
       old_status: "completed",
       new_status: "confirmed",
       changed_by: userId,
-      notes: `Payment of ₦${(payment.amount / 100).toLocaleString()} released to artisan`,
+      notes,
     });
 
     return new Response(
