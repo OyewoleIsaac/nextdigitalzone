@@ -490,6 +490,11 @@ const CustomerDashboard = () => {
         open={!!disputeJob}
         onOpenChange={(o) => !o && setDisputeJob(null)}
       />
+      <GeneralDisputeDialog
+        open={showGeneralDispute}
+        onOpenChange={setShowGeneralDispute}
+        userRole="customer"
+      />
     </div>
   );
 };
