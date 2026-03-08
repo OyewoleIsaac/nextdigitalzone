@@ -165,7 +165,7 @@ const Signup = () => {
         });
         if (artisanProfileError) console.warn('Artisan profile insert warning:', artisanProfileError.message);
       } else {
-        const { error: submissionError } = await supabase.from('client_submissions').insert({
+        const { data: clientSubmissionData, error: submissionError } = await supabase.from('client_submissions').insert({
           full_name: fullName,
           email,
           phone,
@@ -173,8 +173,19 @@ const Signup = () => {
           nin: idData.idNumber,
           status: 'pending',
           metadata: idMeta,
-        });
+        }).select('id').single();
         if (submissionError) throw new Error(`Submission failed: ${submissionError.message}`);
+
+        // Save ID image as attachment so admin can view it
+        if (clientSubmissionData && idData.idImagePath) {
+          await supabase.from('submission_attachments').insert({
+            submission_id: clientSubmissionData.id,
+            submission_type: 'client',
+            file_path: idData.idImagePath,
+            file_name: idData.idImageName || 'ID Document',
+            file_type: 'image/jpeg',
+          });
+        }
       }
 
       toast.success('Account created! Please verify your email to continue.');

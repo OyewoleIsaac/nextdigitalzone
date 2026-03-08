@@ -39,20 +39,25 @@ export function FileViewer({ attachments }: FileViewerProps) {
     return fileName.toLowerCase().endsWith('.pdf');
   };
 
+  const getBucket = (filePath: string) => {
+    // Certificates and ID docs go to verification-docs; form uploads go to form-uploads
+    if (filePath.startsWith('certificates/') || filePath.startsWith('id-docs/') || filePath.startsWith('verification/')) {
+      return 'verification-docs';
+    }
+    return 'form-uploads';
+  };
+
   const handleViewFile = async (file: AttachmentFile) => {
     setSelectedFile(file);
     setIsLoading(true);
     
     try {
-      // Generate a signed URL for the file
+      const bucket = getBucket(file.file_path);
       const { data, error } = await supabase.storage
-        .from('form-uploads')
-        .createSignedUrl(file.file_path, 3600); // 1 hour expiry
+        .from(bucket)
+        .createSignedUrl(file.file_path, 3600);
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       setFileUrl(data.signedUrl);
     } catch (error) {
       console.error('Failed to get file URL:', error);
@@ -64,8 +69,9 @@ export function FileViewer({ attachments }: FileViewerProps) {
 
   const handleDownload = async (file: AttachmentFile) => {
     try {
+      const bucket = getBucket(file.file_path);
       const { data, error } = await supabase.storage
-        .from('form-uploads')
+        .from(bucket)
         .createSignedUrl(file.file_path, 60);
 
       if (error) throw error;
