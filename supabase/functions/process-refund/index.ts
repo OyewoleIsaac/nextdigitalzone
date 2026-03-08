@@ -48,16 +48,18 @@ serve(async (req) => {
     if (disputeErr || !dispute) throw new Error('Dispute not found');
     if (dispute.status !== 'open') throw new Error('Dispute is not open');
 
-    // Find the booking fee payment for this job
-    const { data: payment, error: paymentErr } = await supabase
+    // Find the booking fee payment for this job (get latest one to handle potential duplicates)
+    const { data: payments, error: paymentErr } = await supabase
       .from('payments')
       .select('*')
       .eq('job_id', dispute.job_id)
       .eq('payment_type', 'inspection_fee')
       .eq('status', 'paid')
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
     if (paymentErr) throw new Error('Error fetching payment: ' + paymentErr.message);
+    const payment = payments && payments.length > 0 ? payments[0] : null;
 
     let refundResult = null;
 
