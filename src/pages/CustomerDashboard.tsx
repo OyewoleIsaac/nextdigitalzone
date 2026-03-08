@@ -34,6 +34,7 @@ const CustomerDashboard = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [disputeJob, setDisputeJob] = useState<Job | null>(null);
+  const [showGeneralDispute, setShowGeneralDispute] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const { data: jobPayments } = usePaymentsForJob(selectedJob?.id);
 
