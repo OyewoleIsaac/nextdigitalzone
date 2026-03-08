@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Star, AlertTriangle, TrendingUp, CheckCircle, XCircle, Loader2, Shield } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Star, AlertTriangle, TrendingUp, CheckCircle, XCircle, Loader2, Shield, ExternalLink } from 'lucide-react';
 import { useReviewsForArtisan, useViolationsForArtisan, useReportViolation } from '@/hooks/useReviews';
 import { toast } from 'sonner';
 
@@ -40,9 +41,13 @@ function useAllArtisanProfiles() {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
+      const userIds = (profiles || []).map((p) => p.user_id);
+      if (userIds.length === 0) return [] as ArtisanWithProfile[];
+
       const { data: artisanProfiles } = await supabase
         .from('artisan_profiles')
-        .select('user_id, rating_avg, total_jobs, completed_jobs, cancelled_jobs, is_available, custom_category');
+        .select('user_id, rating_avg, total_jobs, completed_jobs, cancelled_jobs, is_available, custom_category, category_id')
+        .in('user_id', userIds);
 
       return (profiles || []).map((p) => ({
         ...p,
@@ -53,6 +58,7 @@ function useAllArtisanProfiles() {
 }
 
 function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile; onClose: () => void }) {
+  const navigate = useNavigate();
   const profile = artisan.artisan_profiles;
   const { data: reviews } = useReviewsForArtisan(artisan.user_id);
   const { data: violations } = useViolationsForArtisan(artisan.user_id);
@@ -63,12 +69,13 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
   const [violationNotes, setViolationNotes] = useState('');
   const [showViolationForm, setShowViolationForm] = useState(false);
 
-  const completionRate = profile && profile.total_jobs > 0
-    ? ((profile.completed_jobs / profile.total_jobs) * 100).toFixed(0)
-    : '0';
-  const cancellationRate = profile && profile.total_jobs > 0
-    ? ((profile.cancelled_jobs / profile.total_jobs) * 100).toFixed(0)
-    : '0';
+  const totalJobs = profile?.total_jobs ?? 0;
+  const completedJobs = profile?.completed_jobs ?? 0;
+  const cancelledJobs = profile?.cancelled_jobs ?? 0;
+  const ratingAvg = profile?.rating_avg ?? 0;
+
+  const completionRate = totalJobs > 0 ? ((completedJobs / totalJobs) * 100).toFixed(0) : '0';
+  const cancellationRate = totalJobs > 0 ? ((cancelledJobs / totalJobs) * 100).toFixed(0) : '0';
   const isHighRisk = parseInt(cancellationRate) > 30;
 
   const toggleBan = async () => {
@@ -92,6 +99,11 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
     setViolationNotes('');
   };
 
+  const handleViewProfile = () => {
+    onClose();
+    navigate(`/admin/artisans?user=${artisan.user_id}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -99,7 +111,7 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
         <div>
           <h3 className="text-lg font-bold">{artisan.full_name}</h3>
           <p className="text-muted-foreground text-sm">{artisan.phone}</p>
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 mt-1 flex-wrap">
             <Badge variant={artisan.is_verified ? 'default' : 'outline'}>
               {artisan.is_verified ? 'Verified' : 'Unverified'}
             </Badge>
@@ -109,17 +121,22 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
             {isHighRisk && <Badge variant="destructive">High Risk</Badge>}
           </div>
         </div>
-        <Button variant={artisan.is_active ? 'destructive' : 'default'} size="sm" onClick={toggleBan}>
-          {artisan.is_active ? 'Ban Artisan' : 'Restore Artisan'}
-        </Button>
+        <div className="flex flex-col gap-2 items-end">
+          <Button size="sm" variant="outline" onClick={handleViewProfile} className="gap-1.5">
+            <ExternalLink className="h-3.5 w-3.5" /> View Profile
+          </Button>
+          <Button variant={artisan.is_active ? 'destructive' : 'default'} size="sm" onClick={toggleBan}>
+            {artisan.is_active ? 'Ban Artisan' : 'Restore Artisan'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Rating', value: profile?.rating_avg?.toFixed(1) || '0.0', icon: Star, color: 'text-warning' },
+          { label: 'Rating', value: ratingAvg > 0 ? ratingAvg.toFixed(1) : '—', icon: Star, color: 'text-warning' },
           { label: 'Completion', value: `${completionRate}%`, icon: TrendingUp, color: 'text-success' },
-          { label: 'Total Jobs', value: profile?.total_jobs || 0, icon: CheckCircle, color: 'text-primary' },
+          { label: 'Total Jobs', value: totalJobs, icon: CheckCircle, color: 'text-primary' },
           { label: 'Cancellations', value: `${cancellationRate}%`, icon: XCircle, color: isHighRisk ? 'text-destructive' : 'text-muted-foreground' },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label}>
@@ -130,6 +147,22 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Completed vs Cancelled breakdown */}
+      <div className="rounded-lg border bg-muted/20 p-3 grid grid-cols-3 gap-3 text-center text-sm">
+        <div>
+          <p className="font-semibold text-success">{completedJobs}</p>
+          <p className="text-xs text-muted-foreground">Completed</p>
+        </div>
+        <div>
+          <p className="font-semibold text-destructive">{cancelledJobs}</p>
+          <p className="text-xs text-muted-foreground">Cancelled</p>
+        </div>
+        <div>
+          <p className="font-semibold">{totalJobs - completedJobs - cancelledJobs}</p>
+          <p className="text-xs text-muted-foreground">In Progress</p>
+        </div>
       </div>
 
       {/* Violations */}
@@ -165,7 +198,7 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
             <div key={v.id} className="flex items-start gap-2 text-sm border rounded-md p-2 bg-destructive/5">
               <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
               <div>
-                <span className="font-medium capitalize">{v.violation_type.replace('_', ' ')}</span>
+                <span className="font-medium capitalize">{v.violation_type.replace(/_/g, ' ')}</span>
                 {v.notes && <p className="text-muted-foreground text-xs mt-0.5">{v.notes}</p>}
                 <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
               </div>
@@ -199,6 +232,7 @@ function ArtisanDetailPanel({ artisan, onClose }: { artisan: ArtisanWithProfile;
 export default function ArtisanPerformancePage() {
   const { data: artisans, isLoading } = useAllArtisanProfiles();
   const [selected, setSelected] = useState<ArtisanWithProfile | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'banned'>('all');
 
   const getCompletionRate = (p: ArtisanWithProfile['artisan_profiles']) => {
     if (!p || p.total_jobs === 0) return 0;
@@ -209,6 +243,17 @@ export default function ArtisanPerformancePage() {
     return (p.cancelled_jobs / p.total_jobs) * 100;
   };
 
+  const filtered = (artisans || []).filter((a) => {
+    if (filterStatus === 'active') return a.is_active;
+    if (filterStatus === 'banned') return !a.is_active;
+    return true;
+  });
+
+  const totalArtisans = artisans?.length ?? 0;
+  const activeCount = artisans?.filter(a => a.is_active).length ?? 0;
+  const bannedCount = artisans?.filter(a => !a.is_active).length ?? 0;
+  const highRiskCount = artisans?.filter(a => getCancellationRate(a.artisan_profiles) > 30).length ?? 0;
+
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -216,17 +261,57 @@ export default function ArtisanPerformancePage() {
         <p className="text-muted-foreground">Monitor ratings, completion rates, and violations.</p>
       </div>
 
+      {/* Summary cards */}
+      {!isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Total Artisans', value: totalArtisans, color: 'text-primary' },
+            { label: 'Active', value: activeCount, color: 'text-success' },
+            { label: 'Banned', value: bannedCount, color: 'text-destructive' },
+            { label: 'High Risk', value: highRiskCount, color: 'text-warning' },
+          ].map(({ label, value, color }) => (
+            <Card key={label}>
+              <CardContent className="pt-4 pb-3 text-center">
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Filter */}
+      <div className="flex gap-2 mb-4">
+        {(['all', 'active', 'banned'] as const).map((s) => (
+          <Button
+            key={s}
+            size="sm"
+            variant={filterStatus === s ? 'default' : 'outline'}
+            onClick={() => setFilterStatus(s)}
+            className="capitalize"
+          >
+            {s}
+          </Button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {artisans?.map((a) => {
+          {filtered.map((a) => {
             const p = a.artisan_profiles;
-            const isHighRisk = getCancellationRate(p) > 30;
+            const totalJobs = p?.total_jobs ?? 0;
+            const completedJobs = p?.completed_jobs ?? 0;
+            const cancelledJobs = p?.cancelled_jobs ?? 0;
+            const ratingAvg = p?.rating_avg ?? 0;
+            const completionPct = getCompletionRate(p);
+            const cancellationPct = getCancellationRate(p);
+            const isHighRisk = cancellationPct > 30;
             return (
               <Card
                 key={a.user_id}
-                className={`cursor-pointer hover:shadow-md transition-shadow ${!a.is_active ? 'opacity-60' : ''}`}
+                className={`cursor-pointer hover:shadow-md transition-shadow ${!a.is_active ? 'opacity-60 border-destructive/30' : ''}`}
                 onClick={() => setSelected(a)}
               >
                 <CardHeader className="pb-2">
@@ -237,35 +322,53 @@ export default function ArtisanPerformancePage() {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       {!a.is_active && <Badge variant="destructive" className="text-xs">Banned</Badge>}
-                      {isHighRisk && <Badge variant="destructive" className="text-xs">⚠ High Risk</Badge>}
+                      {isHighRisk && a.is_active && <Badge variant="destructive" className="text-xs">⚠ High Risk</Badge>}
                       {!isHighRisk && a.is_active && <Badge variant="secondary" className="text-xs">Active</Badge>}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                  <div className="grid grid-cols-4 gap-2 text-center text-sm">
                     <div>
                       <div className="flex items-center justify-center gap-0.5">
-                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                        <span className="font-semibold">{p?.rating_avg?.toFixed(1) || '—'}</span>
+                        <Star className="h-3 w-3 fill-warning text-warning" />
+                        <span className="font-semibold">{ratingAvg > 0 ? ratingAvg.toFixed(1) : '—'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">Rating</p>
                     </div>
                     <div>
-                      <p className="font-semibold">{getCompletionRate(p).toFixed(0)}%</p>
-                      <p className="text-xs text-muted-foreground">Completion</p>
+                      <p className="font-semibold text-success">{completedJobs}</p>
+                      <p className="text-xs text-muted-foreground">Done</p>
                     </div>
                     <div>
-                      <p className={`font-semibold ${isHighRisk ? 'text-destructive' : ''}`}>{p?.total_jobs || 0}</p>
-                      <p className="text-xs text-muted-foreground">Jobs</p>
+                      <p className={`font-semibold ${isHighRisk ? 'text-destructive' : ''}`}>{cancelledJobs}</p>
+                      <p className="text-xs text-muted-foreground">Cancelled</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">{totalJobs}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
                     </div>
                   </div>
+                  {totalJobs > 0 && (
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Completion</span>
+                        <span>{completionPct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${completionPct >= 70 ? 'bg-success' : completionPct >= 40 ? 'bg-warning' : 'bg-destructive'}`}
+                          style={{ width: `${completionPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
-          {artisans?.length === 0 && (
-            <div className="col-span-full text-center py-16 text-muted-foreground">No artisans registered yet.</div>
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center py-16 text-muted-foreground">No artisans found.</div>
           )}
         </div>
       )}
