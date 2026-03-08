@@ -34,6 +34,7 @@ const ArtisanDashboard = () => {
   const [quoteAmount, setQuoteAmount] = useState('');
   const [requiresInspection, setRequiresInspection] = useState(false);
   const [inspectionFee, setInspectionFee] = useState('');
+  const [showGeneralDispute, setShowGeneralDispute] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
