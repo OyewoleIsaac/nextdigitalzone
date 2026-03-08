@@ -62,25 +62,24 @@ const AdminJobs = () => {
     setLoadingArtisans(true);
     setShowAllArtisans(false);
     try {
-      // Fetch ALL verified artisans with their profiles
-      let query = supabase
+      // Fetch ALL available artisans with their profiles (no category filter — admin can assign any)
+      const { data, error } = await supabase
         .from('artisan_profiles')
         .select('*, profile:profiles!artisan_profiles_user_id_fkey(full_name, phone, address, is_verified)')
         .eq('is_available', true);
 
-      // Filter by category if job has one
-      if (job.category_id) {
-        query = query.eq('category_id', job.category_id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      // Compute distances and sort (nearest first, but don't filter out by radius)
+      // Compute distances and sort: same-category & nearby first
       const withDistance = (data || []).map((a: any) => ({
         ...a,
         distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
-      })).sort((a: any, b: any) => a.distance_km - b.distance_km);
+        same_category: job.category_id ? a.category_id === job.category_id : false,
+      })).sort((a: any, b: any) => {
+        // Same-category first, then by distance
+        if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
+        return a.distance_km - b.distance_km;
+      });
 
       setArtisans(withDistance);
     } catch (err: any) {

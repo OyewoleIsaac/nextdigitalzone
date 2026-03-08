@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateProfile, useCreateArtisanProfile } from '@/hooks/useProfile';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +29,6 @@ type SignupStep = 'role' | 'details' | 'id-verification';
 const Signup = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const createProfile = useCreateProfile();
-  const createArtisanProfile = useCreateArtisanProfile();
   const { data: categories } = useCategories();
 
   const [step, setStep] = useState<SignupStep>('role');
@@ -110,16 +107,19 @@ const Signup = () => {
       if (!authData.user) { setError('Signup failed. Please try again.'); return; }
       const userId = authData.user.id;
 
-      // 2. Create profile
-      await createProfile.mutateAsync({
+      // 2. Create profile (insert directly, anon policy allows this pre-email-verification)
+      const { error: profileError } = await supabase.from('profiles').insert({
         user_id: userId,
         role: role!,
         full_name: fullName,
         phone,
-        address: address || undefined,
-        latitude: addressCoords?.lat,
-        longitude: addressCoords?.lng,
+        address: address || null,
+        latitude: addressCoords?.lat ?? null,
+        longitude: addressCoords?.lng ?? null,
+        is_verified: false,
+        is_active: true,
       });
+      if (profileError) throw new Error(`Profile creation failed: ${profileError.message}`);
 
       // 3. Create submission record with ID data
       const idMeta = {
@@ -130,7 +130,7 @@ const Signup = () => {
       };
 
       if (role === 'artisan') {
-        await supabase.from('artisan_submissions').insert({
+        const { error: submissionError } = await supabase.from('artisan_submissions').insert({
           full_name: fullName,
           email,
           phone,
@@ -141,18 +141,20 @@ const Signup = () => {
           status: 'pending',
           metadata: { ...idMeta, bio: bio || null },
         });
+        if (submissionError) throw new Error(`Submission failed: ${submissionError.message}`);
 
-        await createArtisanProfile.mutateAsync({
+        const { error: artisanProfileError } = await supabase.from('artisan_profiles').insert({
           user_id: userId,
-          category_id: categoryId && categoryId !== 'other' ? categoryId : undefined,
-          custom_category: customCategory || undefined,
-          years_experience: yearsExperience ? parseInt(yearsExperience) : undefined,
-          bio: bio || undefined,
+          category_id: categoryId && categoryId !== 'other' ? categoryId : null,
+          custom_category: customCategory || null,
+          years_experience: yearsExperience ? parseInt(yearsExperience) : null,
+          bio: bio || null,
           latitude: addressCoords?.lat ?? 9.0579,
           longitude: addressCoords?.lng ?? 7.4951,
         });
+        if (artisanProfileError) console.warn('Artisan profile insert warning:', artisanProfileError.message);
       } else {
-        await supabase.from('client_submissions').insert({
+        const { error: submissionError } = await supabase.from('client_submissions').insert({
           full_name: fullName,
           email,
           phone,
@@ -161,6 +163,7 @@ const Signup = () => {
           status: 'pending',
           metadata: idMeta,
         });
+        if (submissionError) throw new Error(`Submission failed: ${submissionError.message}`);
       }
 
       toast.success('Account created! Please verify your email to continue.');
