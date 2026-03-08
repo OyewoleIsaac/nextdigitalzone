@@ -93,7 +93,7 @@ export default function DisputesPage() {
                       <AlertTriangle className="h-4 w-4 text-destructive" />
                       <Badge variant={statusColor(d.status)} className="capitalize">{d.status}</Badge>
                       {isRefundRequest(d.reason) && (
-                        <Badge variant="outline" className="text-xs border-yellow-400/50 text-yellow-600">
+                        <Badge variant="outline" className="text-xs">
                           <DollarSign className="h-3 w-3 mr-1" /> Refund Request
                         </Badge>
                       )}
