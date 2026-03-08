@@ -293,6 +293,12 @@ const ArtisanDashboard = () => {
           </div>
         )}
       </JobDetailDialog>
+
+      <GeneralDisputeDialog
+        open={showGeneralDispute}
+        onOpenChange={setShowGeneralDispute}
+        userRole="artisan"
+      />
     </div>
   );
 };
