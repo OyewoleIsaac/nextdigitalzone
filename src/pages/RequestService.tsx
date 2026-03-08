@@ -287,7 +287,7 @@ const RequestService = () => {
                   <span>If no artisan responds within 24 hours, open a dispute from your dashboard to request a full refund.</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <Clock className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                   <span>Choosing "Pay Later" saves your draft. Your request will <strong>not</strong> be sent to admin until payment is made.</span>
                 </div>
               </div>
