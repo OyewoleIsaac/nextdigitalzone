@@ -132,7 +132,8 @@ const CustomerDashboard = () => {
       notes: 'Customer confirmed inspection was carried out',
     });
     toast.success('Inspection confirmed! The artisan can now submit a quote.');
-    setSelectedJob(null);
+    // Optimistically update selectedJob so the button disappears immediately
+    setSelectedJob(prev => prev ? { ...prev, status: 'inspection_paid' as any } : prev);
   };
 
   const handlePayForJob = async (job: Job) => {
