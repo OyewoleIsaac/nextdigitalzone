@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, Clock, Info } from 'lucide-react';
 import { useOpenDispute, useDisputeForJob } from '@/hooks/useDisputes';
 import type { Job } from '@/hooks/useJobs';
+
+// Refund policy
+const BOOKING_FEE_NGN = 5000;
+const PROCESSING_DEDUCTION_NGN = 300;
+const REFUND_AMOUNT_NGN = BOOKING_FEE_NGN - PROCESSING_DEDUCTION_NGN; // ₦4,700
 
 interface DisputeDialogProps {
   job: Job | null;
@@ -68,9 +73,23 @@ export function DisputeDialog({ job, open, onOpenChange }: DisputeDialogProps) {
             {isPendingNoArtisan && hoursAgo >= 24 && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
                 <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Your job has been pending for over 24 hours with no artisan response.</p>
+                  <p className="font-semibold text-foreground">
+                    Eligible refund: ₦{REFUND_AMOUNT_NGN.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Refund policy note */}
+            {isPendingNoArtisan && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground">
-                  Your job has been pending for over 24 hours with no artisan response.
-                  You are eligible for a <strong>full refund</strong> of your booking fee.
+                  <strong>Refund policy:</strong> A ₦{PROCESSING_DEDUCTION_NGN.toLocaleString()} processing fee is deducted to cover
+                  Paystack transaction charges and admin costs. You will receive <strong>₦{REFUND_AMOUNT_NGN.toLocaleString()}</strong> back
+                  to your original payment method within 3–5 business days after admin approval.
                 </p>
               </div>
             )}
