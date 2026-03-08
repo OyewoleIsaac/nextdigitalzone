@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAllDisputes, useProcessRefund, useResolveDispute } from '@/hooks/useDisputes';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,9 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet, User, CheckSquare, Wrench } from 'lucide-react';
+import { AlertTriangle, Loader2, CheckCircle, RefreshCw, DollarSign, XCircle, Wallet, User, CheckSquare, Wrench, Phone, MapPin, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Dispute } from '@/hooks/useDisputes';
+
+type EnrichedDispute = Dispute & {
+  customer_profile: { full_name: string; phone: string; address: string | null; role: string } | null;
+  artisan_profile: { full_name: string; phone: string; address: string | null; role: string } | null;
+};
 
 const REFUND_OPTIONS = [
   {
@@ -48,11 +54,56 @@ const REFUND_OPTIONS = [
   },
 ];
 
+function PartyCard({
+  label,
+  profile,
+  role,
+  navigate,
+}: {
+  label: string;
+  profile: { full_name: string; phone: string; address: string | null } | null;
+  role: 'customer' | 'artisan';
+  navigate: (path: string) => void;
+}) {
+  if (!profile) return null;
+  const profilePath = role === 'artisan' ? '/admin/artisans' : '/admin/clients';
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+        <button
+          onClick={() => navigate(profilePath)}
+          className="flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <ExternalLink className="h-3 w-3" /> View Profile
+        </button>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="font-medium">{profile.full_name}</span>
+      </div>
+      {profile.phone && (
+        <div className="flex items-center gap-1.5">
+          <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <a href={`tel:${profile.phone}`} className="text-primary hover:underline">{profile.phone}</a>
+        </div>
+      )}
+      {profile.address && (
+        <div className="flex items-start gap-1.5">
+          <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <span className="text-muted-foreground">{profile.address}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DisputesPage() {
   const { data: disputes, isLoading } = useAllDisputes();
   const processRefund = useProcessRefund();
   const resolveDispute = useResolveDispute();
-  const [selected, setSelected] = useState<Dispute | null>(null);
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState<EnrichedDispute | null>(null);
   const [resolution, setResolution] = useState('');
   const [refundType, setRefundType] = useState<'wallet_credit' | 'partial' | 'full' | 'none' | 'manual'>('wallet_credit');
 
@@ -100,12 +151,13 @@ export default function DisputesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {disputes?.map((d) => (
+          {(disputes as EnrichedDispute[])?.map((d) => (
             <Card key={d.id} className="hover:shadow-md transition-shadow">
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Header row */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
                       <Badge variant={statusColor(d.status) as any} className="capitalize">{d.status}</Badge>
                       {isRefundRequest(d.reason) && (
@@ -120,42 +172,47 @@ export default function DisputesPage() {
                       )}
                       <span className="text-xs text-muted-foreground">{format(new Date(d.created_at), 'MMM d, yyyy')}</span>
                     </div>
+
+                    {/* Reason */}
                     <p className="text-sm">{d.reason}</p>
-                    {/* Participant names */}
-                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs">
-                      {(d as any).customer_profile && (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          <span className="font-medium text-foreground">{(d as any).customer_profile.full_name}</span>
-                          {(d as any).customer_profile.phone && (
-                            <a href={`tel:${(d as any).customer_profile.phone}`} className="text-primary">{(d as any).customer_profile.phone}</a>
-                          )}
-                          <span>(Customer)</span>
-                        </span>
-                      )}
-                      {(d as any).artisan_profile && (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Wallet className="h-3 w-3" />
-                          <span className="font-medium text-foreground">{(d as any).artisan_profile.full_name}</span>
-                          <span>(Artisan)</span>
-                        </span>
+
+                    {/* Party cards — customer & artisan */}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <PartyCard
+                        label="Customer"
+                        profile={d.customer_profile}
+                        role="customer"
+                        navigate={navigate}
+                      />
+                      {d.artisan_profile && (
+                        <PartyCard
+                          label="Artisan"
+                          profile={d.artisan_profile}
+                          role="artisan"
+                          navigate={navigate}
+                        />
                       )}
                     </div>
-                    {d.resolution_notes && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">Resolution: {d.resolution_notes}</p>
-                    )}
+
                     {d.preferred_refund_type && (
-                      <p className="text-xs mt-1 flex items-center gap-1">
+                      <p className="text-xs flex items-center gap-1">
                         <span className="text-muted-foreground">Customer prefers:</span>
                         <span className={`font-medium ${d.preferred_refund_type === 'wallet_credit' ? 'text-green-600' : 'text-blue-600'}`}>
                           {d.preferred_refund_type === 'wallet_credit' ? '💳 Wallet Credit (₦5,000)' : '🏦 Cash Refund (₦4,700)'}
                         </span>
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">
+
+                    {d.resolution_notes && (
+                      <p className="text-xs text-muted-foreground italic">Resolution: {d.resolution_notes}</p>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
                       {d.job_id ? `Job ID: ${d.job_id.slice(0, 8)}…` : <span className="italic">General complaint (no job)</span>}
                     </p>
                   </div>
+
+                  {/* Actions */}
                   <div className="flex flex-col gap-2 shrink-0">
                     {d.status === 'open' && (
                       <Button size="sm" variant="outline" onClick={() => {
@@ -186,16 +243,44 @@ export default function DisputesPage() {
         </div>
       )}
 
+      {/* Resolve Dialog */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Resolve Dispute</DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4 pt-2">
+              {/* Party info in dialog */}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <PartyCard
+                  label="Customer"
+                  profile={selected.customer_profile}
+                  role="customer"
+                  navigate={navigate}
+                />
+                {selected.artisan_profile && (
+                  <PartyCard
+                    label="Artisan"
+                    profile={selected.artisan_profile}
+                    role="artisan"
+                    navigate={navigate}
+                  />
+                )}
+              </div>
+
+              {/* Reason */}
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
                 <p className="font-medium mb-1">Customer's Reason:</p>
                 <p className="text-muted-foreground">{selected.reason}</p>
+                {selected.preferred_refund_type && (
+                  <p className="text-xs mt-2">
+                    <span className="text-muted-foreground">Preferred resolution:</span>{' '}
+                    <span className="font-medium">
+                      {selected.preferred_refund_type === 'wallet_credit' ? '💳 Wallet Credit' : '🏦 Cash Refund'}
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* Refund decision */}
@@ -245,7 +330,7 @@ export default function DisputesPage() {
               {refundType === 'manual' && (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-primary">
                   <Wrench className="h-4 w-4 shrink-0" />
-                  <span>Dispute will be flagged as "under review". You resolve the issue off-platform, then come back and click "Mark Closed" to finalize.</span>
+                  <span>Dispute flagged as "under review". Resolve off-platform, then click "Mark Closed" to finalize.</span>
                 </div>
               )}
 
