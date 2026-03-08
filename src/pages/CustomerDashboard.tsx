@@ -10,6 +10,7 @@ import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { ReviewDialog } from '@/components/jobs/ReviewDialog';
 import { DisputeDialog } from '@/components/jobs/DisputeDialog';
+import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
 import { useUpdateJob, useAddJobHistory } from '@/hooks/useJobs';
 import { useInitializePayment, useReleasePayment, usePaymentsForJob } from '@/hooks/usePayments';
 import { useWallet, usePayWithWalletCredit } from '@/hooks/useWallet';
