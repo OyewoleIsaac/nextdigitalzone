@@ -65,7 +65,7 @@ const AdminJobs = () => {
       // Fetch ALL available artisans with their profiles (no category filter — admin can assign any)
       const { data, error } = await supabase
         .from('artisan_profiles')
-        .select('*, profile:profiles!artisan_profiles_user_id_fkey(full_name, phone, address, is_verified)')
+        .select('*, profile:profiles!artisan_profiles_user_id_profiles_fkey(full_name, phone, address, is_verified)')
         .eq('is_available', true);
 
       if (error) throw error;
