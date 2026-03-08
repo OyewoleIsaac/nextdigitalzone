@@ -28,6 +28,8 @@ const RequestService = () => {
   const { data: categories } = useCategories();
   const createJob = useCreateJob();
   const initPayment = useInitializePayment();
+  const { balance: walletBalance } = useWallet();
+  const payWithWallet = usePayWithWalletCredit();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
