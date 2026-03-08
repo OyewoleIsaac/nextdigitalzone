@@ -243,7 +243,7 @@ export default function DisputesPage() {
                 </div>
               )}
               {refundType === 'manual' && (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-700">
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-primary">
                   <Wrench className="h-4 w-4 shrink-0" />
                   <span>Dispute will be flagged as "under review". You resolve the issue off-platform, then come back and click "Mark Closed" to finalize.</span>
                 </div>
