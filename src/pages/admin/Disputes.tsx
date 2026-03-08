@@ -257,14 +257,14 @@ export default function DisputesPage() {
                 <PartyCard
                   label="Customer"
                   profile={selected.customer_profile}
-                  role="customer"
+                  userId={selected.customer_id}
                   navigate={navigate}
                 />
                 {selected.artisan_profile && (
                   <PartyCard
                     label="Artisan"
                     profile={selected.artisan_profile}
-                    role="artisan"
+                    userId={selected.artisan_id}
                     navigate={navigate}
                   />
                 )}
