@@ -14,41 +14,6 @@ interface JobDetailDialogProps {
   children?: React.ReactNode;
 }
 
-function PhotoPreview({ url, label }: { url: string; label: string }) {
-  const [enlarged, setEnlarged] = useState(false);
-  return (
-    <>
-      <div
-        className="cursor-pointer group relative rounded-lg overflow-hidden border bg-muted/40"
-        onClick={() => setEnlarged(true)}
-      >
-        <img
-          src={url}
-          alt={label}
-          className="w-full h-32 object-cover group-hover:opacity-90 transition-opacity"
-        />
-        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1 px-2 flex items-center gap-1">
-          <Image className="h-3 w-3" /> {label}
-        </div>
-      </div>
-      {/* Enlarged lightbox */}
-      {enlarged && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setEnlarged(false)}
-        >
-          <img
-            src={url}
-            alt={label}
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-          />
-          <p className="absolute bottom-6 text-white text-sm opacity-70">Click anywhere to close</p>
-        </div>
-      )}
-    </>
-  );
-}
-
 export function JobDetailDialog({ job, open, onOpenChange, children }: JobDetailDialogProps) {
   const { data: history } = useJobHistory(job?.id || '');
 
