@@ -18,6 +18,7 @@ import VerifyAccount from "./pages/VerifyAccount";
 // User Dashboards
 import CustomerDashboard from "./pages/CustomerDashboard";
 import ArtisanDashboard from "./pages/ArtisanDashboard";
+import ProfilePage from "./pages/Profile";
 
 // Admin Pages
 import AdminLogin from "./pages/AdminLogin";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/dashboard" element={<CustomerDashboard />} />
               <Route path="/request-service" element={<RequestService />} />
               <Route path="/artisan/dashboard" element={<ArtisanDashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
 
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />

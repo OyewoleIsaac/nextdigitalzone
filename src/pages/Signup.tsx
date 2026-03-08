@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hammer, Loader2, AlertCircle } from 'lucide-react';
+import { Hammer, Loader2, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { UserRole } from '@/lib/types';
 import { RoleSelect } from '@/components/signup/RoleSelect';
-import { AddressField } from '@/components/signup/AddressField';
+import { CityAddressField } from '@/components/signup/CityAddressField';
+import { IdVerificationStep, type IdVerificationData } from '@/components/signup/IdVerificationStep';
 
 const baseSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -24,6 +25,8 @@ const baseSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+type SignupStep = 'role' | 'details' | 'id-verification';
+
 const Signup = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
@@ -31,7 +34,7 @@ const Signup = () => {
   const createArtisanProfile = useCreateArtisanProfile();
   const { data: categories } = useCategories();
 
-  const [step, setStep] = useState<'role' | 'form'>('role');
+  const [step, setStep] = useState<SignupStep>('role');
   const [role, setRole] = useState<UserRole | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +47,9 @@ const Signup = () => {
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | undefined>();
 
+  // ID Verification
+  const [idData, setIdData] = useState<IdVerificationData | null>(null);
+
   // Artisan-specific
   const [categoryId, setCategoryId] = useState('');
   const [customCategory, setCustomCategory] = useState('');
@@ -51,23 +57,22 @@ const Signup = () => {
   const [bio, setBio] = useState('');
 
   useEffect(() => {
-    if (!authLoading && user) {
-      navigate('/dashboard');
-    }
+    if (!authLoading && user) navigate('/dashboard');
   }, [user, authLoading, navigate]);
 
   const handleRoleSelect = (selectedRole: UserRole) => {
     setRole(selectedRole);
-    setStep('form');
+    setStep('details');
     setError('');
   };
 
-  const handleAddressChange = (addr: string, coords?: { lat: number; lng: number }) => {
+  const handleAddressChange = (addr: string, coords: { lat: number; lng: number }) => {
     setAddress(addr);
-    if (coords) setAddressCoords(coords);
+    setAddressCoords(coords);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1 → Step 2 (details → id-verification)
+  const handleProceedToId = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -76,11 +81,25 @@ const Signup = () => {
       setError(validation.error.errors[0].message);
       return;
     }
+    if (!address || !addressCoords) {
+      setError('Please verify your address by selecting your city or using GPS before proceeding.');
+      return;
+    }
+    setStep('id-verification');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!idData) {
+      setError('Please complete the ID verification section before creating your account.');
+      return;
+    }
 
     setIsSubmitting(true);
-
     try {
-      // 1. Sign up with Supabase Auth
+      // 1. Sign up
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -89,7 +108,6 @@ const Signup = () => {
 
       if (signUpError) { setError(signUpError.message); return; }
       if (!authData.user) { setError('Signup failed. Please try again.'); return; }
-
       const userId = authData.user.id;
 
       // 2. Create profile
@@ -103,7 +121,14 @@ const Signup = () => {
         longitude: addressCoords?.lng,
       });
 
-      // 3. Create submission record so admin can see & review this user
+      // 3. Create submission record with ID data
+      const idMeta = {
+        user_id: userId,
+        id_type: idData.idType,
+        id_number: idData.idNumber,
+        id_image_path: idData.idImagePath,
+      };
+
       if (role === 'artisan') {
         await supabase.from('artisan_submissions').insert({
           full_name: fullName,
@@ -114,10 +139,9 @@ const Signup = () => {
           custom_category: customCategory || null,
           years_experience: yearsExperience ? parseInt(yearsExperience) : null,
           status: 'pending',
-          metadata: { user_id: userId, bio: bio || null },
+          metadata: { ...idMeta, bio: bio || null },
         });
 
-        // 4. Create artisan profile
         await createArtisanProfile.mutateAsync({
           user_id: userId,
           category_id: categoryId && categoryId !== 'other' ? categoryId : undefined,
@@ -128,19 +152,18 @@ const Signup = () => {
           longitude: addressCoords?.lng ?? 7.4951,
         });
       } else {
-        // Customer submission record
         await supabase.from('client_submissions').insert({
           full_name: fullName,
           email,
           phone,
           address: address || null,
-          nin: 'PENDING', // Placeholder — admin will see status pending
+          nin: idData.idNumber,
           status: 'pending',
-          metadata: { user_id: userId },
+          metadata: idMeta,
         });
       }
 
-      toast.success('Account created! Please verify your email, then submit your documents.');
+      toast.success('Account created! Please verify your email to continue.');
       navigate('/verify-account');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred';
@@ -158,6 +181,12 @@ const Signup = () => {
     );
   }
 
+  const stepLabels: Record<SignupStep, string> = {
+    role: 'Choose Role',
+    details: 'Your Details',
+    'id-verification': 'Verify Identity',
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
       <Card className="w-full max-w-lg shadow-xl animate-fade-in-up">
@@ -169,17 +198,38 @@ const Signup = () => {
           </div>
           <CardTitle className="text-2xl font-display">Create Account</CardTitle>
           <CardDescription>
-            {step === 'role'
-              ? 'Choose how you want to use NDZ Marketplace'
-              : `Sign up as ${role === 'customer' ? 'a Customer' : 'an Artisan'}`}
+            {step === 'role' && 'Choose how you want to use NDZ Marketplace'}
+            {step === 'details' && `Sign up as ${role === 'customer' ? 'a Customer' : 'an Artisan'}`}
+            {step === 'id-verification' && 'Identity verification (required)'}
           </CardDescription>
+
+          {/* Step indicator */}
+          {step !== 'role' && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              {(['details', 'id-verification'] as const).map((s, i) => (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    step === s ? 'bg-primary text-primary-foreground' :
+                    (step === 'id-verification' && i === 0) ? 'bg-success text-success-foreground' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {step === 'id-verification' && i === 0 ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-xs ${step === s ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                    {stepLabels[s]}
+                  </span>
+                  {i < 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                </div>
+              ))}
+            </div>
+          )}
         </CardHeader>
 
         <CardContent>
-          {step === 'role' ? (
-            <RoleSelect onSelect={handleRoleSelect} />
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+          {step === 'role' && <RoleSelect onSelect={handleRoleSelect} />}
+
+          {step === 'details' && (
+            <form onSubmit={handleProceedToId} className="space-y-4">
               {error && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -190,57 +240,30 @@ const Signup = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe"
-                    required
-                  />
+                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+234..."
-                    required
-                  />
+                  <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234..." required />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
               </div>
 
-              {/* Address with geolocation + OSM verification */}
-              <AddressField
+              {/* City/Location picker */}
+              <CityAddressField
                 value={address}
+                coords={addressCoords}
                 onChange={handleAddressChange}
-                label="Your Address"
-                required={role === 'artisan'}
+                role={role}
               />
 
               {/* Artisan-specific fields */}
@@ -261,50 +284,28 @@ const Signup = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="experience">Years of Experience</Label>
-                      <Input
-                        id="experience"
-                        type="number"
-                        min="0"
-                        value={yearsExperience}
-                        onChange={(e) => setYearsExperience(e.target.value)}
-                        placeholder="e.g. 5"
-                      />
+                      <Input id="experience" type="number" min="0" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} placeholder="e.g. 5" />
                     </div>
                   </div>
-
                   {categoryId === 'other' && (
                     <div className="space-y-2">
                       <Label htmlFor="customCategory">Specify your service</Label>
-                      <Input
-                        id="customCategory"
-                        value={customCategory}
-                        onChange={(e) => setCustomCategory(e.target.value)}
-                        placeholder="e.g. Tiling"
-                      />
+                      <Input id="customCategory" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="e.g. Tiling" />
                     </div>
                   )}
-
                   <div className="space-y-2">
                     <Label htmlFor="bio">Short Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Tell customers about your skills and experience..."
-                      rows={3}
-                    />
+                    <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell customers about your skills..." rows={3} />
                   </div>
                 </>
               )}
 
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setStep('role')} className="flex-1">
-                  Back
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
-                    : 'Create Account'}
+                <Button type="submit" className="flex-1">
+                  Next: Verify ID <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
 
@@ -312,6 +313,30 @@ const Signup = () => {
                 Already have an account?{' '}
                 <Link to="/login" className="text-primary hover:underline font-medium">Sign in</Link>
               </p>
+            </form>
+          )}
+
+          {step === 'id-verification' && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <IdVerificationStep value={idData} onChange={setIdData} />
+
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setStep('details')} className="flex-1">
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Back
+                </Button>
+                <Button type="submit" disabled={isSubmitting || !idData} className="flex-1">
+                  {isSubmitting
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+                    : 'Create Account'}
+                </Button>
+              </div>
             </form>
           )}
         </CardContent>
