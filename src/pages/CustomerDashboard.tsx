@@ -58,10 +58,14 @@ const CustomerDashboard = () => {
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
   const handleConfirmComplete = async (job: Job) => {
+    // Optimistically flip status so the button vanishes immediately
+    setSelectedJob(prev => prev ? { ...prev, status: 'confirmed' as any } : prev);
     try {
       await releasePayment.mutateAsync(job.id);
-      setSelectedJob(null);
-    } catch { /* handled */ }
+    } catch {
+      // Roll back the optimistic update on failure
+      setSelectedJob(prev => prev ? { ...prev, status: 'completed' as any } : prev);
+    }
   };
 
   // Shared hybrid payment: deduct wallet credit first, charge remainder via Paystack
