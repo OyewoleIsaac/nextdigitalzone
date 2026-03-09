@@ -117,7 +117,7 @@ export function useReleasePayment() {
       toast.success('Payment released and job confirmed!');
     },
     onError: (error: Error) => {
-      toast.error(`Release failed: ${error.message}`);
+      toast.error(`Unable to release payment: ${error.message}. Please try again or contact support.`);
     },
   });
 }
