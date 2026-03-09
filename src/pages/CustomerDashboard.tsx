@@ -604,7 +604,7 @@ const CustomerDashboard = () => {
             </div>
             <Button className="w-full" onClick={() => handleConfirmComplete(selectedJob)} disabled={releasePayment.isPending}>
               {releasePayment.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-              Confirm Job Complete & Release Payment
+              Confirm Job Completion & Release Payment
             </Button>
             <p className="text-xs text-muted-foreground text-center">This will activate a 30-day guarantee.</p>
           </div>
