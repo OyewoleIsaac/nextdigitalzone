@@ -38,7 +38,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <img src={ndzLogo} alt="NDZ Service 360" className="h-10 w-auto object-contain" />
+            <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
