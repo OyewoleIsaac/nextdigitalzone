@@ -76,7 +76,7 @@ const Login = () => {
             </div>
           </div>
           <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your NDZ Marketplace account</CardDescription>
+          <CardDescription>Sign in to your NDZ Services 360 account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

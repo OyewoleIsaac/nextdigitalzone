@@ -10,7 +10,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src={ndzLogo} alt="NDZ Service 360" className="h-10 w-auto object-contain" />
+              <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
             </Link>
             <p className="text-secondary-foreground/70 max-w-md">
               Connecting clients with verified, skilled artisans across Nigeria. 
@@ -41,7 +41,7 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-secondary-foreground/70">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>info@artisanhub.ng</span>
+                <span>info@ndzservices360.ng</span>
               </li>
               <li className="flex items-center gap-2 text-secondary-foreground/70">
                 <Phone className="h-4 w-4 text-primary" />
@@ -56,7 +56,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-secondary-foreground/10 mt-8 pt-8 text-center text-secondary-foreground/50 text-sm">
-          <p>&copy; {new Date().getFullYear()} NDZ Service 360. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} NDZ Services 360. All rights reserved.</p>
         </div>
       </div>
     </footer>

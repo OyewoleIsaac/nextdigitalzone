@@ -127,7 +127,7 @@ const BecomeArtisan = () => {
                 Registration Submitted!
               </h1>
               <p className="text-muted-foreground mb-8 animate-fade-in-up stagger-2">
-                Thank you for registering with ArtisanHub. Our team will review your 
+                Thank you for registering with NDZ Services 360. Our team will review your 
                 application and get in touch with you shortly.
               </p>
               <div className="bg-muted/50 rounded-xl p-6 animate-fade-in-up stagger-3">

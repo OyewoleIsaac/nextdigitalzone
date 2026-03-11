@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     let htmlBody: string;
 
     if (status === 'confirmed') {
-      subject = `🎉 Your NDZ Marketplace account has been approved!`;
+      subject = `🎉 Your NDZ Services 360 account has been approved!`;
       htmlBody = `
         <!DOCTYPE html>
         <html>
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
           <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 24px;">
             <tr><td>
               <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="color: #f97316; font-size: 24px; margin: 0;">🔨 NDZ Marketplace</h1>
+                <h1 style="color: #f97316; font-size: 24px; margin: 0;">NDZ Services 360</h1>
               </div>
               <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
                 <h2 style="color: #166534; font-size: 20px; margin: 0 0 8px 0;">✅ Account Approved!</h2>
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
               </div>
               <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hi <strong>${firstName}</strong>,</p>
               <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                Our admin team has reviewed your application and your NDZ Marketplace ${roleLabel} account has been <strong>approved</strong>. You can now log in and start using the platform.
+                Our admin team has reviewed your application and your NDZ Services 360 ${roleLabel} account has been <strong>approved</strong>. You can now log in and start using the platform.
               </p>
               <div style="text-align: center; margin: 32px 0;">
                 <a href="https://nextdigitalzone.lovable.app/login"
@@ -56,13 +56,13 @@ Deno.serve(async (req) => {
                 </a>
               </div>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-              <p style="color: #9ca3af; font-size: 12px; text-align: center;">NDZ Marketplace · Nigeria's Trusted Artisan Marketplace</p>
+              <p style="color: #9ca3af; font-size: 12px; text-align: center;">NDZ Services 360 · Nigeria's Trusted Artisan Platform</p>
             </td></tr>
           </table>
         </body></html>
       `;
     } else {
-      subject = `Your NDZ Marketplace application – Update`;
+      subject = `Your NDZ Services 360 application – Update`;
       htmlBody = `
         <!DOCTYPE html>
         <html>
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
           <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 24px;">
             <tr><td>
               <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="color: #f97316; font-size: 24px; margin: 0;">🔨 NDZ Marketplace</h1>
+                <h1 style="color: #f97316; font-size: 24px; margin: 0;">NDZ Services 360</h1>
               </div>
               <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
                 <h2 style="color: #991b1b; font-size: 20px; margin: 0 0 8px 0;">Application Update</h2>
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
               </div>
               <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hi <strong>${firstName}</strong>,</p>
               <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                Thank you for applying to join NDZ Marketplace as a ${roleLabel}. After reviewing your application, we were unable to approve it at this time.
+                Thank you for applying to join NDZ Services 360 as a ${roleLabel}. After reviewing your application, we were unable to approve it at this time.
               </p>
               ${rejection_reason ? `
               <div style="background: #f9fafb; border-left: 4px solid #e5e7eb; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0;">
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
                 You may address the issues above and re-apply. If you believe this was an error, please contact support.
               </p>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-              <p style="color: #9ca3af; font-size: 12px; text-align: center;">NDZ Marketplace · Nigeria's Trusted Artisan Marketplace</p>
+              <p style="color: #9ca3af; font-size: 12px; text-align: center;">NDZ Services 360 · Nigeria's Trusted Artisan Platform</p>
             </td></tr>
           </table>
         </body></html>
