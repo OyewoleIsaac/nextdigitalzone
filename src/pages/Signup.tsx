@@ -231,9 +231,7 @@ const Signup = () => {
       <Card className="w-full max-w-lg shadow-xl animate-fade-in-up">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg">
-              <Hammer className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={ndzLogo} alt="NDZ Services 360" className="h-14 w-auto object-contain" />
           </div>
           <CardTitle className="text-2xl font-display">Create Account</CardTitle>
           <CardDescription>

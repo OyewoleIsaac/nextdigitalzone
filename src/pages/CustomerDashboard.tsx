@@ -172,10 +172,7 @@ const CustomerDashboard = () => {
         <div className="section-container">
           <div className="flex h-16 items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md">
-                <Hammer className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-bold">NDZ<span className="text-primary">Marketplace</span></span>
+              <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
             </Link>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground hidden sm:block">Hi, {profile?.full_name}</span>
