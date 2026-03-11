@@ -184,7 +184,7 @@ const ArtisanDashboard = () => {
       <main className="section-container py-8">
         {profile && !profile.is_verified && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/40 bg-warning/10 mb-6">
-            <Hammer className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-warning">Account Pending Verification</p>
               <p className="text-sm text-muted-foreground mt-0.5">
