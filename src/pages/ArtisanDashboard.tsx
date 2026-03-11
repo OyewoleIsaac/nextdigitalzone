@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
+  LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
 } from 'lucide-react';
+import ndzLogo from '@/assets/ndz-logo.png';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
@@ -163,10 +164,7 @@ const ArtisanDashboard = () => {
         <div className="section-container">
           <div className="flex h-16 items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md">
-                <Hammer className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-bold">NDZ<span className="text-primary">Marketplace</span></span>
+              <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
             </Link>
             <div className="flex items-center gap-2">
               <Badge variant={profile?.is_verified ? 'default' : 'outline'} className={profile?.is_verified ? 'bg-success text-success-foreground' : ''}>
@@ -186,7 +184,7 @@ const ArtisanDashboard = () => {
       <main className="section-container py-8">
         {profile && !profile.is_verified && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/40 bg-warning/10 mb-6">
-            <Hammer className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-warning">Account Pending Verification</p>
               <p className="text-sm text-muted-foreground mt-0.5">

@@ -14,7 +14,8 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Hammer, Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image, Building2, AlertTriangle, CreditCard } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Camera, MapPin, Lock, User, Phone, Eye, EyeOff, Award, Upload, FileText, CheckCircle, X, Image, Building2, AlertTriangle, CreditCard } from 'lucide-react';
+import ndzLogo from '@/assets/ndz-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
@@ -368,10 +369,7 @@ const ProfilePage = () => {
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </Link>
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md">
-                <Hammer className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-display text-lg font-bold hidden sm:block">NDZ<span className="text-primary">Marketplace</span></span>
+              <img src={ndzLogo} alt="NDZ Services 360" className="h-9 w-auto object-contain" />
             </Link>
           </div>
         </div>

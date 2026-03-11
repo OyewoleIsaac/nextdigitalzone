@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { 
-  Hammer, 
   LayoutDashboard, 
   Users, 
   UserCheck, 
@@ -16,6 +15,7 @@ import {
   BarChart2,
   AlertTriangle
 } from 'lucide-react';
+import ndzLogo from '@/assets/ndz-logo.png';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -109,12 +109,7 @@ export function AdminSidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-accent">
-            <Hammer className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
-          <span className="font-display text-lg font-bold text-sidebar-foreground">
-            Admin
-          </span>
+          <img src={ndzLogo} alt="NDZ Services 360" className="h-9 w-auto object-contain" />
         </div>
 
         {/* Navigation */}
