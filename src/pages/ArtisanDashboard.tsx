@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Hammer, LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
+  LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
 } from 'lucide-react';
+import ndzLogo from '@/assets/ndz-logo.png';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { GeneralDisputeDialog } from '@/components/jobs/GeneralDisputeDialog';
