@@ -236,7 +236,7 @@ const Signup = () => {
           </div>
           <CardTitle className="text-2xl font-display">Create Account</CardTitle>
           <CardDescription>
-            {step === 'role' && 'Choose how you want to use NDZ Marketplace'}
+            {step === 'role' && 'Choose how you want to use NDZ Services 360'}
             {step === 'details' && `Sign up as ${role === 'customer' ? 'a Customer' : 'an Artisan'}`}
             {step === 'id-verification' && 'Identity verification (required)'}
           </CardDescription>
