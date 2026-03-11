@@ -56,7 +56,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-secondary-foreground/10 mt-8 pt-8 text-center text-secondary-foreground/50 text-sm">
-          <p>&copy; {new Date().getFullYear()} ArtisanHub. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} NDZ Service 360. All rights reserved.</p>
         </div>
       </div>
     </footer>
