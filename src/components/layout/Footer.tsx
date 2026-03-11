@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Hammer, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import ndzLogo from '@/assets/ndz-logo.png';
 
 export function Footer() {
   return (
