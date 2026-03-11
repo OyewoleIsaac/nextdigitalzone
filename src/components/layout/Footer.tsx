@@ -10,12 +10,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-                <Hammer className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-bold">
-                Artisan<span className="text-primary">Hub</span>
-              </span>
+              <img src={ndzLogo} alt="NDZ Service 360" className="h-10 w-auto object-contain" />
             </Link>
             <p className="text-secondary-foreground/70 max-w-md">
               Connecting clients with verified, skilled artisans across Nigeria. 
