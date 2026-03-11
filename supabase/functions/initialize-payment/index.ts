@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       email: `${profile?.phone || userId.slice(0, 8)}@ndz.app`,
       amount: paystackAmount,
       reference,
-      callback_url: `${req.headers.get("origin") || "https://nextdigitalzone.lovable.app"}/dashboard?payment=success&job_id=${job_id}`,
+      callback_url: `${req.headers.get("origin") || Deno.env.get('SITE_URL') || "https://ndzservices360.com"}/dashboard?payment=success&job_id=${job_id}`,
       metadata: {
         job_id,
         payment_type,

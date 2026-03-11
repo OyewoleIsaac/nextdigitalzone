@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
                 Our admin team has reviewed your application and your NDZ Services 360 ${roleLabel} account has been <strong>approved</strong>. You can now log in and start using the platform.
               </p>
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://nextdigitalzone.lovable.app/login"
+                <a href="${Deno.env.get('SITE_URL') || 'https://ndzservices360.com'}/login"
                    style="background: #f97316; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; display: inline-block;">
                   Go to My Dashboard →
                 </a>
@@ -98,23 +98,20 @@ Deno.serve(async (req) => {
       `;
     }
 
-    // Use Lovable Cloud email API
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY is not configured');
     }
 
-    const projectId = Deno.env.get('SUPABASE_URL')?.split('//')[1]?.split('.')[0];
-
-    // Try Lovable's email API
-    const emailResponse = await fetch(`https://api.lovable.dev/projects/${projectId}/email`, {
+    const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${lovableApiKey}`,
+        'Authorization': `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        to: email,
+        from: 'NDZ Services 360 <no-reply@ndzservices360.com>',
+        to: [email],
         subject,
         html: htmlBody,
       }),
