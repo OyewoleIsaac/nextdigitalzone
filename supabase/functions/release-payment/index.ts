@@ -248,6 +248,42 @@ Deno.serve(async (req) => {
         body: `Customer confirmed the job is complete. Your earnings of ₦${(updatedArtisanAmount / 100).toLocaleString()} have been released.`,
         type: "payment",
       });
+
+      // Send Resend email to artisan
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      if (resendKey) {
+        try {
+          const { data: artData } = await adminSupabase.auth.admin.getUserById(job.artisan_id);
+          const artEmail = artData?.user?.email;
+          if (artEmail) {
+            const siteUrl = Deno.env.get("SITE_URL") || "https://ndzservices360.com";
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${resendKey}`,
+              },
+              body: JSON.stringify({
+                from: "NDZ Services 360 <no-reply@ndzservices360.com>",
+                to: [artEmail],
+                subject: "Payment released — job confirmed",
+                html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+                  <h2 style="color:#f97316;">NDZ Services 360</h2>
+                  <p>Hi, your payment of <strong>₦${(updatedArtisanAmount / 100).toLocaleString()}</strong> for the job <strong>"${job.title || job_id.slice(0, 8)}"</strong> has been released.</p>
+                  <p>${transferMessage}</p>
+                  <div style="text-align:center;margin:24px 0;">
+                    <a href="${siteUrl}/artisan/dashboard" style="background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Dashboard →</a>
+                  </div>
+                  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+                  <p style="color:#9ca3af;font-size:12px;">NDZ Services 360 · Nigeria's Trusted Artisan Platform</p>
+                </body></html>`,
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn("Release payment email error:", e);
+        }
+      }
     }
 
     return new Response(

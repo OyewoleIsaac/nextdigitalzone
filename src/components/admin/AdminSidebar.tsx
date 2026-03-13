@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCheck, 
-  FolderOpen, 
+import {
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  FolderOpen,
   FileEdit,
   LogOut,
   ChevronDown,
@@ -13,7 +13,8 @@ import {
   Briefcase,
   CreditCard,
   BarChart2,
-  AlertTriangle
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import ndzLogo from '@/assets/ndz-logo.png';
 import { cn } from '@/lib/utils';
@@ -87,105 +88,138 @@ const navItems = [
   },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const location = useLocation();
   const { signOut } = useAuth();
   const [openMenus, setOpenMenus] = useState<string[]>(['Clients', 'Artisans', 'Jobs', 'Payments']);
 
   const toggleMenu = (title: string) => {
-    setOpenMenus(prev => 
-      prev.includes(title) 
+    setOpenMenus(prev =>
+      prev.includes(title)
         ? prev.filter(t => t !== title)
         : [...prev, title]
     );
   };
 
   const isActive = (href: string) => location.pathname === href;
-  const isParentActive = (children: { href: string }[]) => 
+  const isParentActive = (children: { href: string }[]) =>
     children.some(child => location.pathname === child.href);
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
-      <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
-          <img src={ndzLogo} alt="NDZ Services 360" className="h-9 w-auto object-contain" />
-        </div>
+  const handleNavClick = () => {
+    // Close sidebar on mobile after navigation
+    onClose();
+  };
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.map((item) => (
-            <div key={item.title}>
-              {item.href ? (
-                <Link to={item.href}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      'w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
-                      isActive(item.href) && 'bg-sidebar-accent text-sidebar-foreground'
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.title}
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Button
-                    variant="ghost"
-                    onClick={() => toggleMenu(item.title)}
-                    className={cn(
-                      'w-full justify-between text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
-                      item.children && isParentActive(item.children) && 'text-sidebar-foreground'
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
+  return (
+    <>
+      {/* Mobile overlay backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={cn(
+        'fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300',
+        // On mobile: hidden by default, shown when isOpen
+        'translate-x-[-100%] md:translate-x-0',
+        isOpen && 'translate-x-0',
+      )}>
+        <div className="flex h-full flex-col">
+          {/* Logo + mobile close button */}
+          <div className="flex h-16 items-center justify-between gap-2 px-6 border-b border-sidebar-border">
+            <img src={ndzLogo} alt="NDZ Services 360" className="h-9 w-auto object-contain" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              onClick={onClose}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {navItems.map((item) => (
+              <div key={item.title}>
+                {item.href ? (
+                  <Link to={item.href} onClick={handleNavClick}>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        'w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+                        isActive(item.href) && 'bg-sidebar-accent text-sidebar-foreground'
+                      )}
+                    >
                       <item.icon className="h-5 w-5" />
                       {item.title}
-                    </span>
-                    <ChevronDown 
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() => toggleMenu(item.title)}
                       className={cn(
-                        'h-4 w-4 transition-transform',
-                        openMenus.includes(item.title) && 'rotate-180'
-                      )} 
-                    />
-                  </Button>
-                  {item.children && openMenus.includes(item.title) && (
-                    <div className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <Link key={child.href} to={child.href}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              'w-full justify-start text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent',
-                              isActive(child.href) && 'bg-sidebar-accent text-sidebar-foreground'
-                            )}
-                          >
-                            {child.title}
-                          </Button>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </nav>
+                        'w-full justify-between text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+                        item.children && isParentActive(item.children) && 'text-sidebar-foreground'
+                      )}
+                    >
+                      <span className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5" />
+                        {item.title}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 transition-transform',
+                          openMenus.includes(item.title) && 'rotate-180'
+                        )}
+                      />
+                    </Button>
+                    {item.children && openMenus.includes(item.title) && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {item.children.map((child) => (
+                          <Link key={child.href} to={child.href} onClick={handleNavClick}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                'w-full justify-start text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+                                isActive(child.href) && 'bg-sidebar-accent text-sidebar-foreground'
+                              )}
+                            >
+                              {child.title}
+                            </Button>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </nav>
 
-        {/* Sign Out */}
-        <div className="p-4 border-t border-sidebar-border">
-          <Button
-            variant="ghost"
-            onClick={signOut}
-            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
+          {/* Sign Out */}
+          <div className="p-4 border-t border-sidebar-border">
+            <Button
+              variant="ghost"
+              onClick={signOut}
+              className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </Button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

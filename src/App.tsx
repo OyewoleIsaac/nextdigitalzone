@@ -14,6 +14,8 @@ import BecomeArtisan from "./pages/BecomeArtisan";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import VerifyAccount from "./pages/VerifyAccount";
 
 // User Dashboards
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="/become-artisan" element={<BecomeArtisan />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-account" element={<VerifyAccount />} />
 
               {/* User Dashboards */}

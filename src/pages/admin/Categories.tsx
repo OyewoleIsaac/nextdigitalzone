@@ -14,7 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Plus, Edit, Trash2, Loader2, Briefcase, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Briefcase, Search, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DEFAULT_FORM = {
   name: '',
@@ -43,6 +45,7 @@ const Categories = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    const noFeeType = !formData.requires_inspection && !formData.is_agency_job;
     await createCategory.mutateAsync({
       name: formData.name,
       slug: formData.slug || generateSlug(formData.name),
@@ -51,6 +54,8 @@ const Categories = () => {
       default_inspection_fee: Math.round(formData.default_inspection_fee * 100),
       is_agency_job: formData.is_agency_job,
       default_agency_fee: Math.round(formData.default_agency_fee * 100),
+      // Standard categories (no fee type) start inactive until a fee is configured
+      is_active: noFeeType ? false : true,
     });
     setShowCreateDialog(false);
     setFormData(DEFAULT_FORM);
@@ -80,7 +85,14 @@ const Categories = () => {
     setSelectedCategory(null);
   };
 
+  const isStandardCategory = (cat: Category) =>
+    !cat.requires_inspection && !cat.is_agency_job;
+
   const handleToggleActive = async (category: Category) => {
+    if (!category.is_active && isStandardCategory(category)) {
+      toast.error('This category has no inspection fee or agency fee set. Please add a fee type before activating it.');
+      return;
+    }
     await updateCategory.mutateAsync({ id: category.id, is_active: !category.is_active });
   };
 
@@ -277,7 +289,21 @@ const Categories = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Switch checked={cat.is_active} onCheckedChange={() => handleToggleActive(cat)} />
+                        {isStandardCategory(cat) && !cat.is_active ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 text-warning">
+                                <Switch checked={false} onCheckedChange={() => handleToggleActive(cat)} disabled />
+                                <AlertCircle className="h-3.5 w-3.5" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs max-w-[200px]">Set an inspection fee or agency fee before activating this category.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Switch checked={cat.is_active} onCheckedChange={() => handleToggleActive(cat)} />
+                        )}
                         <Badge variant={cat.is_active ? 'default' : 'secondary'}>
                           {cat.is_active ? 'Active' : 'Inactive'}
                         </Badge>
