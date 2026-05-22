@@ -30,7 +30,7 @@ export function RoleSelect({ onSelect }: RoleSelectProps) {
           <Wrench className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">I'm an artisan</h3>
+          <h3 className="font-semibold text-lg">I'm a service provider</h3>
           <p className="text-sm text-muted-foreground mt-1">Join the marketplace and get connected to customers who need your skills.</p>
         </div>
       </button>

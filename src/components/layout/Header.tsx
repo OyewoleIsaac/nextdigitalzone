@@ -14,9 +14,7 @@ export function Header() {
   const { data: profile } = useProfile();
 
   const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/find-artisan', label: 'Find an Artisan' },
-    { href: '/become-artisan', label: 'Become an Artisan' },
+    { href: '/', label: 'Home' }, n
   ];
 
   const isActive = (path: string) => location.pathname === path;
