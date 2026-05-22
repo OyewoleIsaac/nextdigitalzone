@@ -40,6 +40,7 @@ export function useCreateCategory() {
       name: string; slug: string; description?: string;
       requires_inspection?: boolean; default_inspection_fee?: number;
       is_agency_job?: boolean; default_agency_fee?: number;
+      is_active?: boolean;
     }) => {
       const { error } = await supabase.from('categories').insert(category as any);
       if (error) throw error;

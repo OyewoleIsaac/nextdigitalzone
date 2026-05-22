@@ -5,7 +5,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useCustomerJobsEnriched } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText, MessageCircleWarning, CheckCircle, FileWarning, Phone } from 'lucide-react';
+import { LogOut, Loader2, Search, ClipboardList, User, CreditCard, Star, AlertTriangle, Shield, Clock, Wallet, ReceiptText, MessageCircleWarning, CheckCircle, FileWarning, Phone, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ndzLogo from '@/assets/ndz-logo.png';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
@@ -21,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { Job } from '@/hooks/useJobs';
+import { notifyJobEvent } from '@/hooks/useNotifyJobEvent';
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
@@ -137,6 +139,7 @@ const CustomerDashboard = () => {
       notes: 'Customer confirmed inspection was carried out',
     });
     toast.success('Inspection confirmed! The artisan can now submit a quote.');
+    notifyJobEvent(job.id, 'inspection_confirmed');
     // Optimistically update selectedJob so the button disappears immediately
     setSelectedJob(prev => prev ? { ...prev, status: 'inspection_paid' as any } : prev);
   };
@@ -159,6 +162,7 @@ const CustomerDashboard = () => {
       notes: 'Customer accepted the quote — awaiting payment',
     });
     toast.success('Quote accepted! Please complete payment below.');
+    notifyJobEvent(job.id, 'quote_accepted');
     // Update selectedJob so dialog shows payment prompt immediately
     setSelectedJob(prev => prev ? { ...prev, status: 'price_agreed' as any } : prev);
   };
@@ -179,16 +183,38 @@ const CustomerDashboard = () => {
               <span className="text-sm text-muted-foreground hidden sm:block">Hi, {profile?.full_name}</span>
               {walletBalance > 0 && (
                 <button onClick={() => setShowWallet(!showWallet)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors">
-                  <Wallet className="h-3.5 w-3.5" />₦{(walletBalance / 100).toLocaleString()} credit
+                  className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors">
+                  <Wallet className="h-3.5 w-3.5" /><span className="hidden sm:inline">₦{(walletBalance / 100).toLocaleString()} credit</span>
+                  <span className="sm:hidden">₦{(walletBalance / 100).toLocaleString()}</span>
                 </button>
               )}
               <NotificationBell />
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}><User className="h-4 w-4 mr-1" /> Profile</Button>
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
+              {/* Desktop buttons */}
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => navigate('/profile')}><User className="h-4 w-4 mr-1" /> Profile</Button>
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
                 <MessageCircleWarning className="h-4 w-4 mr-1" /> Complaint
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
+              {/* Mobile dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="sm:hidden">
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="h-4 w-4 mr-2" /> Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowGeneralDispute(true)}>
+                    <MessageCircleWarning className="h-4 w-4 mr-2" /> Complaint
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

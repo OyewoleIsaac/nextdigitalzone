@@ -17,6 +17,7 @@ import { JobRejectDialog } from '@/components/admin/JobRejectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { MapPin, Search, UserPlus, Loader2, XCircle, CheckCircle, AlertCircle, Phone, User, DollarSign, Package, Wrench, ExternalLink, Building2, AlertTriangle, CreditCard } from 'lucide-react';
+import { notifyJobEvent } from '@/hooks/useNotifyJobEvent';
 import { format } from 'date-fns';
 import type { Job } from '@/hooks/useJobs';
 
@@ -147,6 +148,7 @@ const AdminJobs = () => {
       notes: isAgency ? 'Admin sent placement offer to artisan' : 'Admin assigned artisan to job',
     });
     toast.success(isAgency ? 'Offer sent to artisan!' : 'Artisan assigned successfully!');
+    notifyJobEvent(assignDialogJob.id, 'artisan_assigned');
     setAssignDialogJob(null);
   };
 

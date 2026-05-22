@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard,
+  LogOut, Loader2, Briefcase, Star, TrendingUp, CheckCircle, Camera, User, MessageCircleWarning, Phone, MapPin, AlertTriangle, FileWarning, Clock, CreditCard, MoreVertical,
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ndzLogo from '@/assets/ndz-logo.png';
 import { JobCard } from '@/components/jobs/JobCard';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
@@ -20,6 +21,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { useDisputeForJob } from '@/hooks/useDisputes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { notifyJobEvent } from '@/hooks/useNotifyJobEvent';
 import type { Job } from '@/hooks/useJobs';
 
 const ArtisanDashboard = () => {
@@ -73,6 +75,7 @@ const ArtisanDashboard = () => {
       notes: `Quote submitted — Materials: ₦${materialCost}, Workmanship: ₦${workmanshipCost}, Total: ₦${(totalKobo / 100).toLocaleString()}`,
     });
     toast.success('Quote submitted to customer!');
+    notifyJobEvent(selectedJob.id, 'quote_submitted');
     setSelectedJob(null);
     setMaterialCost('');
     setWorkmanshipCost('');
@@ -90,6 +93,7 @@ const ArtisanDashboard = () => {
       notes: inspectionNotes ? `Inspection done. Notes: ${inspectionNotes}` : 'Artisan marked inspection as completed — awaiting customer confirmation',
     });
     toast.success('Inspection marked done! Waiting for customer to confirm.');
+    notifyJobEvent(selectedJob.id, 'inspection_done');
     setSelectedJob(null);
     setInspectionNotes('');
   };
@@ -111,6 +115,7 @@ const ArtisanDashboard = () => {
       notes: 'Artisan submitted proof of completion (photos uploaded). Awaiting customer confirmation.',
     });
     toast.success('Proof submitted! Waiting for customer to confirm completion.');
+    notifyJobEvent(selectedJob.id, 'job_completed');
     setSelectedJob(null);
   };
 
@@ -167,15 +172,36 @@ const ArtisanDashboard = () => {
               <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
             </Link>
             <div className="flex items-center gap-2">
-              <Badge variant={profile?.is_verified ? 'default' : 'outline'} className={profile?.is_verified ? 'bg-success text-success-foreground' : ''}>
-                {profile?.is_verified ? <><CheckCircle className="h-3 w-3 mr-1" />Verified</> : 'Pending Verification'}
+              <Badge variant={profile?.is_verified ? 'default' : 'outline'} className={profile?.is_verified ? 'bg-success text-success-foreground hidden sm:inline-flex' : 'hidden sm:inline-flex'}>
+                {profile?.is_verified ? <><CheckCircle className="h-3 w-3 mr-1" />Verified</> : 'Pending'}
               </Badge>
               <NotificationBell />
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}><User className="h-4 w-4 mr-1" /> Profile</Button>
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
+              {/* Desktop buttons */}
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => navigate('/profile')}><User className="h-4 w-4 mr-1" /> Profile</Button>
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex text-destructive border-destructive/40 hover:bg-destructive/5" onClick={() => setShowGeneralDispute(true)}>
                 <MessageCircleWarning className="h-4 w-4 mr-1" /> Complaint
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={handleSignOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
+              {/* Mobile dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="sm:hidden">
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="h-4 w-4 mr-2" /> Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowGeneralDispute(true)}>
+                    <MessageCircleWarning className="h-4 w-4 mr-2" /> Complaint
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
