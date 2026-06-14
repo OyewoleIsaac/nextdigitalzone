@@ -555,8 +555,8 @@ const ArtisanDashboard = () => {
         {selectedJobDispute && (
           <div className="pt-4 border-t">
             <div className={`rounded-lg p-3 space-y-1.5 text-sm ${selectedJobDispute.status === 'open' ? 'bg-destructive/5 border border-destructive/20' :
-                selectedJobDispute.status === 'resolved' ? 'bg-green-50 border border-green-200' :
-                  'bg-muted border'
+              selectedJobDispute.status === 'resolved' ? 'bg-green-50 border border-green-200' :
+                'bg-muted border'
               }`}>
               <div className="flex items-center gap-2">
                 <AlertTriangle className={`h-4 w-4 shrink-0 ${selectedJobDispute.status === 'open' ? 'text-destructive' : 'text-muted-foreground'}`} />
