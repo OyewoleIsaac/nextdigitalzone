@@ -13,7 +13,7 @@ export function Footer() {
               <img src={ndzLogo} alt="NDZ Services 360" className="h-10 w-auto object-contain" />
             </Link>
             <p className="text-secondary-foreground/70 max-w-md">
-              Connecting clients with verified, skilled artisans across Nigeria. 
+              Connecting clients with verified, skilled artisans across Nigeria.
               Quality craftsmanship, trusted service.
             </p>
           </div>
@@ -23,12 +23,12 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/find-artisan" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link to="/#" className="text-secondary-foreground/70 hover:text-primary transition-colors">
                   Find an Artisan
                 </Link>
               </li>
               <li>
-                <Link to="/become-artisan" className="text-secondary-foreground/70 hover:text-primary transition-colors">
+                <Link to="/#" className="text-secondary-foreground/70 hover:text-primary transition-colors">
                   Become an Artisan
                 </Link>
               </li>
@@ -41,15 +41,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-secondary-foreground/70">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>info@ndzservices360.ng</span>
+                <span>info@nextdigitalzone.com</span>
               </li>
               <li className="flex items-center gap-2 text-secondary-foreground/70">
                 <Phone className="h-4 w-4 text-primary" />
-                <span>+234 800 123 4567</span>
+                <span>07025043574; 08035877294</span>
               </li>
               <li className="flex items-center gap-2 text-secondary-foreground/70">
                 <MapPin className="h-4 w-4 text-primary" />
-                <span>Lagos, Nigeria</span>
+                <span>Abuja, Nigeria</span>
               </li>
             </ul>
           </div>

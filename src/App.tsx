@@ -9,8 +9,6 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 
 // Public Pages
 import Index from "./pages/Index";
-import FindArtisan from "./pages/FindArtisan";
-import BecomeArtisan from "./pages/BecomeArtisan";
 import NotFound from "./pages/NotFound";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
@@ -52,8 +50,6 @@ const App = () => (
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
-              <Route path="/find-artisan" element={<FindArtisan />} />
-              <Route path="/become-artisan" element={<BecomeArtisan />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
