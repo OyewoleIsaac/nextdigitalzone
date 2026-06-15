@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Clock, Search, Briefcase } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Search, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
 
@@ -90,6 +90,7 @@ const RequestService = () => {
         longitude: lng,
         inspection_fee: requiresPayment ? paymentAmount : null,
         requires_inspection: selectedCategory?.requires_inspection ?? false,
+        status: requiresPayment ? 'draft' : 'pending',
       });
 
       const jobId = (job as any).id;
@@ -100,8 +101,7 @@ const RequestService = () => {
       if (requiresPayment && paymentAmount > 0) {
         setStep('payment');
       } else {
-        // No fee required — submit directly, job stays draft until admin activates
-        toast.success('Service request submitted! We will review and get back to you shortly.');
+        toast.success('Service request submitted! Our team will assign an artisan shortly.');
         navigate('/dashboard');
       }
     } catch {
@@ -121,11 +121,6 @@ const RequestService = () => {
     } catch {
       // handled by hook
     }
-  };
-
-  const handlePayLater = () => {
-    toast.info('Request saved as draft. Pay the fee from your dashboard to activate it.');
-    navigate('/dashboard');
   };
 
   if (authLoading) {
@@ -349,10 +344,6 @@ const RequestService = () => {
                   <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                   <span>If we cannot fulfil your request within 24 hours, you can open a dispute for a full refund.</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
-                  <span>Choosing "Pay Later" saves your draft. Your request will <strong>not</strong> be sent to admin until payment is made.</span>
-                </div>
               </div>
 
               <Button className="w-full" onClick={handlePayFee} disabled={initPayment.isPending}>
@@ -361,10 +352,6 @@ const RequestService = () => {
                 ) : (
                   <><CreditCard className="h-4 w-4 mr-2" />Pay ₦{(paymentAmount / 100).toLocaleString()} Now</>
                 )}
-              </Button>
-              <Button variant="outline" className="w-full text-muted-foreground" onClick={handlePayLater}>
-                <Clock className="h-4 w-4 mr-2" />
-                Save as Draft — Pay Later from Dashboard
               </Button>
             </CardContent>
           </Card>

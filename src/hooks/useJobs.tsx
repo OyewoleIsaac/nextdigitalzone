@@ -180,7 +180,6 @@ export function useJobHistory(jobId: string) {
   });
 }
 
-// Create a new job as 'draft' (booking fee not yet paid)
 export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -194,20 +193,23 @@ export function useCreateJob() {
       longitude: number;
       inspection_fee?: number | null;
       requires_inspection?: boolean;
+      status?: 'draft' | 'pending';
     }) => {
+      const { status = 'draft', ...rest } = data;
       const { data: result, error } = await supabase
         .from('jobs')
-        .insert({ ...data, status: 'draft' as any })
+        .insert({ ...rest, status: status as any })
         .select()
         .single();
       if (error) throw error;
 
-      // Insert initial status history
       await supabase.from('job_status_history').insert({
         job_id: result.id,
-        new_status: 'draft' as unknown as string,
+        new_status: status as unknown as string,
         changed_by: data.customer_id,
-        notes: 'Service request created — awaiting booking fee payment',
+        notes: status === 'pending'
+          ? 'Service request submitted — awaiting artisan assignment'
+          : 'Service request created — awaiting booking fee payment',
       } as any);
 
       return result;
