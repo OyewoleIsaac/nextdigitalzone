@@ -543,13 +543,22 @@ const AdminJobs = () => {
           </DialogHeader>
           {assignDialogJob && (
             <div className="space-y-4">
-              <div className="bg-muted/50 p-3 rounded-lg text-sm">
+              <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
                 <p className="font-medium">{assignDialogJob.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(assignDialogJob as any).category?.name && (
+                    <Badge variant="secondary" className="text-xs">
+                      Category: {(assignDialogJob as any).category.name}
+                    </Badge>
+                  )}
+                  {(assignDialogJob as any).category?.is_agency_job && (
+                    <Badge variant="outline" className="text-xs">Agency Job — artisan must accept/reject</Badge>
+                  )}
+                </div>
                 <p className="text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" />{assignDialogJob.address}</p>
-                {(assignDialogJob as any).category?.is_agency_job && (
-                  <Badge variant="outline" className="text-xs mt-1">Agency Job — artisan will receive an offer to accept/reject</Badge>
-                )}
+                <p className="text-xs text-muted-foreground">Only artisans in this category and not currently on an active job are shown.</p>
               </div>
+
 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
