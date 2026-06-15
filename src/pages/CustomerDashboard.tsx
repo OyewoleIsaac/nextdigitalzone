@@ -106,22 +106,20 @@ const CustomerDashboard = () => {
     } catch { /* handled */ }
   };
 
-  const handlePayDraftFee = async (job: Job) => {
+  const resolveBookingFee = (job: Job) => {
     const cat = (job as any).category;
-    const feeAmount = job.inspection_fee
-      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
+    return job.inspection_fee
       ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
+      ?? cat?.default_inspection_fee
       ?? 0;
+  };
+
+  const handlePayDraftFee = async (job: Job) => {
+    const feeAmount = resolveBookingFee(job);
     await handleHybridPayment(job, feeAmount, 'inspection_fee');
   };
 
-  const getDraftFeeDisplay = (job: Job) => {
-    const cat = (job as any).category;
-    return job.inspection_fee
-      ?? (cat?.requires_inspection ? cat.default_inspection_fee : null)
-      ?? (cat?.is_agency_job ? cat.default_agency_fee : null)
-      ?? 0;
-  };
+  const getDraftFeeDisplay = (job: Job) => resolveBookingFee(job);
 
   const handleConfirmInspection = async (job: Job) => {
     if (!user) return;
