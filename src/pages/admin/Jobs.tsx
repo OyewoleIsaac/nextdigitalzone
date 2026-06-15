@@ -108,17 +108,27 @@ const AdminJobs = () => {
 
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
+      // Find artisans currently busy on uncompleted jobs (exclude them)
+      const { data: activeJobs } = await supabase
+        .from('jobs')
+        .select('artisan_id')
+        .in('artisan_id', userIds)
+        .in('status', ['assigned', 'quoted', 'inspection_requested', 'inspection_paid', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed', 'disputed'] as any);
+      const busySet = new Set((activeJobs || []).map((j: any) => j.artisan_id));
+
+      const jobCategoryId = job.category_id;
+
       const withDistance: ArtisanOption[] = artisanData
         .filter((a: any) => !!profileMap[a.user_id])
+        .filter((a: any) => !busySet.has(a.user_id))
+        // Only artisans matching the job's category
+        .filter((a: any) => jobCategoryId ? a.category_id === jobCategoryId : true)
         .map((a: any) => ({
           ...a,
           profile: profileMap[a.user_id],
           distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
-          same_category: job.category_id ? a.category_id === job.category_id : false,
-        })).sort((a: any, b: any) => {
-          if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
-          return a.distance_km - b.distance_km;
-        });
+          same_category: true,
+        })).sort((a: any, b: any) => a.distance_km - b.distance_km);
 
       setArtisans(withDistance);
     } catch (err: any) {
@@ -128,6 +138,7 @@ const AdminJobs = () => {
       setLoadingArtisans(false);
     }
   };
+
 
   const handleAssign = async (artisanUserId: string) => {
     if (!assignDialogJob || !user) return;
@@ -532,13 +543,22 @@ const AdminJobs = () => {
           </DialogHeader>
           {assignDialogJob && (
             <div className="space-y-4">
-              <div className="bg-muted/50 p-3 rounded-lg text-sm">
+              <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
                 <p className="font-medium">{assignDialogJob.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(assignDialogJob as any).category?.name && (
+                    <Badge variant="secondary" className="text-xs">
+                      Category: {(assignDialogJob as any).category.name}
+                    </Badge>
+                  )}
+                  {(assignDialogJob as any).category?.is_agency_job && (
+                    <Badge variant="outline" className="text-xs">Agency Job — artisan must accept/reject</Badge>
+                  )}
+                </div>
                 <p className="text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" />{assignDialogJob.address}</p>
-                {(assignDialogJob as any).category?.is_agency_job && (
-                  <Badge variant="outline" className="text-xs mt-1">Agency Job — artisan will receive an offer to accept/reject</Badge>
-                )}
+                <p className="text-xs text-muted-foreground">Only artisans in this category and not currently on an active job are shown.</p>
               </div>
+
 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -569,7 +589,10 @@ const AdminJobs = () => {
                   )}
 
                   {filteredArtisans.length === 0 && artisans.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No available artisans found.</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No available artisans found in <span className="font-medium">{(assignDialogJob as any).category?.name || 'this category'}</span>. All matching artisans may be busy on other jobs.
+                    </p>
+
                   ) : filteredArtisans.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No results match your search.</p>
                   ) : (
