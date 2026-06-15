@@ -141,6 +141,51 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Notify admins that a new service request needs assignment
+        if (resendKey) {
+          try {
+            const { data: admins } = await supabase
+              .from("admin_users")
+              .select("user_id");
+            const { data: jobDetails } = await supabase
+              .from("jobs")
+              .select("title, address, category:categories(name)")
+              .eq("id", job_id)
+              .single();
+            const { data: customerData } = customer_id
+              ? await supabase.auth.admin.getUserById(customer_id)
+              : { data: null as any };
+            const customerEmail = customerData?.user?.email || "";
+            const categoryName = (jobDetails as any)?.category?.name || "";
+            const shortId = job_id.slice(0, 8).toUpperCase();
+
+            for (const admin of admins || []) {
+              const { data: adminUser } = await supabase.auth.admin.getUserById(admin.user_id);
+              const adminEmail = adminUser?.user?.email;
+              if (!adminEmail) continue;
+              await sendResendEmail(
+                resendKey,
+                adminEmail,
+                `New service request awaiting assignment (${shortId})`,
+                emailTemplate(`
+                  <p>A new service request has been paid for and is now awaiting artisan assignment.</p>
+                  <p><strong>Service:</strong> ${jobDetails?.title || "Service request"}${categoryName ? ` (${categoryName})` : ""}<br>
+                  <strong>Address:</strong> ${jobDetails?.address || "—"}<br>
+                  <strong>Customer:</strong> ${customerEmail}<br>
+                  <strong>Ref:</strong> ${shortId}</p>
+                  <div style="text-align:center;margin:24px 0;">
+                    <a href="${siteUrl}/admin/jobs" style="background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Assign Artisan →</a>
+                  </div>
+                `)
+              );
+            }
+          } catch (e) {
+            console.warn("Admin notification failed:", e);
+          }
+        }
+
+
+
       } else if (payment_type === "job_payment" && job_id) {
         await supabase
           .from("jobs")
