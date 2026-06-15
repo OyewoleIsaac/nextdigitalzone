@@ -589,7 +589,10 @@ const AdminJobs = () => {
                   )}
 
                   {filteredArtisans.length === 0 && artisans.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No available artisans found.</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No available artisans found in <span className="font-medium">{(assignDialogJob as any).category?.name || 'this category'}</span>. All matching artisans may be busy on other jobs.
+                    </p>
+
                   ) : filteredArtisans.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No results match your search.</p>
                   ) : (
