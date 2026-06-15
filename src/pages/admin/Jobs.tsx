@@ -108,17 +108,27 @@ const AdminJobs = () => {
 
       const profileMap = Object.fromEntries((profileData || []).map((p: any) => [p.user_id, p]));
 
+      // Find artisans currently busy on uncompleted jobs (exclude them)
+      const { data: activeJobs } = await supabase
+        .from('jobs')
+        .select('artisan_id')
+        .in('artisan_id', userIds)
+        .in('status', ['assigned', 'quoted', 'inspection_requested', 'inspection_paid', 'price_agreed', 'payment_escrowed', 'in_progress', 'completed', 'disputed'] as any);
+      const busySet = new Set((activeJobs || []).map((j: any) => j.artisan_id));
+
+      const jobCategoryId = job.category_id;
+
       const withDistance: ArtisanOption[] = artisanData
         .filter((a: any) => !!profileMap[a.user_id])
+        .filter((a: any) => !busySet.has(a.user_id))
+        // Only artisans matching the job's category
+        .filter((a: any) => jobCategoryId ? a.category_id === jobCategoryId : true)
         .map((a: any) => ({
           ...a,
           profile: profileMap[a.user_id],
           distance_km: haversineDistance(job.latitude, job.longitude, a.latitude, a.longitude),
-          same_category: job.category_id ? a.category_id === job.category_id : false,
-        })).sort((a: any, b: any) => {
-          if (a.same_category !== b.same_category) return a.same_category ? -1 : 1;
-          return a.distance_km - b.distance_km;
-        });
+          same_category: true,
+        })).sort((a: any, b: any) => a.distance_km - b.distance_km);
 
       setArtisans(withDistance);
     } catch (err: any) {
@@ -128,6 +138,7 @@ const AdminJobs = () => {
       setLoadingArtisans(false);
     }
   };
+
 
   const handleAssign = async (artisanUserId: string) => {
     if (!assignDialogJob || !user) return;
