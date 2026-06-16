@@ -1,3 +1,11 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Lovable AI files
+.lovable/
+
 # Logs
 logs
 *.log
