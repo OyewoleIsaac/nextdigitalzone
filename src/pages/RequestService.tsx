@@ -14,9 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Search, Briefcase } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, MapPin, CreditCard, Shield, Info, Home, Search, Briefcase, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityAddressField } from '@/components/signup/CityAddressField';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useSiteSetting } from '@/hooks/useSiteSettings';
 
 const LeafletMap = lazy(() => import('@/components/maps/LeafletMap'));
 
@@ -27,6 +29,7 @@ const RequestService = () => {
   const { data: categories } = useCategories();
   const createJob = useCreateJob();
   const initPayment = useInitializePayment();
+  const { data: whatsAppNumber } = useSiteSetting('whatsapp_number');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,6 +43,8 @@ const RequestService = () => {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [pendingJobTitle, setPendingJobTitle] = useState('');
   const [pendingJobAddress, setPendingJobAddress] = useState('');
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [afterWhatsApp, setAfterWhatsApp] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/login');
@@ -99,14 +104,42 @@ const RequestService = () => {
       setPendingJobAddress(address);
 
       if (requiresPayment && paymentAmount > 0) {
-        setStep('payment');
+        setAfterWhatsApp(() => () => setStep('payment'));
       } else {
-        toast.success('Service request submitted! Our team will assign an artisan shortly.');
-        navigate('/dashboard');
+        setAfterWhatsApp(() => () => {
+          toast.success('Service request submitted! Our team will assign an artisan shortly.');
+          navigate('/dashboard');
+        });
       }
+      setShowWhatsAppDialog(true);
     } catch {
       // error handled by hook
     }
+  };
+
+  const buildWhatsAppUrl = () => {
+    const name = profile?.full_name || user?.email || 'A customer';
+    const categoryName = selectedCategory?.name || '';
+    const message =
+      `Hello Next Digital Zone! I'm ${name} and I've just submitted a service request.\n\n` +
+      `*Service:* ${pendingJobTitle}\n` +
+      `*Category:* ${categoryName}\n` +
+      `*Description:* ${description}\n` +
+      `*Location:* ${pendingJobAddress}\n\n` +
+      `Please attend to my request. Thank you!`;
+    const number = whatsAppNumber || '2349018681499';
+    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  };
+
+  const handleWhatsAppSend = () => {
+    window.open(buildWhatsAppUrl(), '_blank');
+    setShowWhatsAppDialog(false);
+    afterWhatsApp?.();
+  };
+
+  const handleWhatsAppSkip = () => {
+    setShowWhatsAppDialog(false);
+    afterWhatsApp?.();
   };
 
   const handlePayFee = async () => {
@@ -295,6 +328,44 @@ const RequestService = () => {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={showWhatsAppDialog} onOpenChange={(open) => { if (!open) handleWhatsAppSkip(); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-xl">
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <MessageCircle className="h-5 w-5 shrink-0 text-green-500" />
+                Send a WhatsApp Reminder
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed">
+                Send a quick message to our team on WhatsApp with your request details pre-filled.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2 overflow-hidden">
+              {[
+                { label: 'Name', value: profile?.full_name || user?.email },
+                { label: 'Service', value: pendingJobTitle },
+                { label: 'Category', value: selectedCategory?.name },
+                { label: 'Location', value: pendingJobAddress },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex gap-2 min-w-0">
+                  <span className="text-xs font-medium text-foreground shrink-0 w-16">{label}:</span>
+                  <span className="text-xs text-muted-foreground break-words min-w-0 flex-1 line-clamp-2">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-1">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={handleWhatsAppSkip}>
+                Skip
+              </Button>
+              <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppSend}>
+                <MessageCircle className="h-4 w-4 mr-2 shrink-0" />
+                Send on WhatsApp
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {step === 'payment' && selectedCategory && (
           <Card>

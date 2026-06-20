@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, Eye, EyeOff, Shield, MessageCircle, Save } from 'lucide-react';
+import { useSiteSetting, useUpdateSiteSetting } from '@/hooks/useSiteSettings';
 import { z } from 'zod';
 
 const passwordSchema = z.object({
@@ -22,6 +23,20 @@ const passwordSchema = z.object({
 const Settings = () => {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: savedWhatsAppNumber } = useSiteSetting('whatsapp_number');
+  const updateSetting = useUpdateSiteSetting();
+  const [whatsAppNumber, setWhatsAppNumber] = useState('');
+
+  useEffect(() => {
+    if (savedWhatsAppNumber) setWhatsAppNumber(savedWhatsAppNumber);
+  }, [savedWhatsAppNumber]);
+
+  const handleSaveWhatsApp = () => {
+    const cleaned = whatsAppNumber.replace(/\D/g, '');
+    if (!cleaned) { toast.error('Please enter a valid number.'); return; }
+    updateSetting.mutate({ key: 'whatsapp_number', value: cleaned });
+  };
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -198,6 +213,36 @@ const Settings = () => {
                 {isSubmitting ? 'Updating...' : 'Update Password'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              WhatsApp Contact Number
+            </CardTitle>
+            <CardDescription>
+              The WhatsApp number users are prompted to message after submitting a service request. Enter in international format without spaces or the + sign (e.g. <strong>2349018681499</strong> for 09018681499).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                value={whatsAppNumber}
+                onChange={(e) => setWhatsAppNumber(e.target.value)}
+                placeholder="e.g. 2349018681499"
+                className="font-mono"
+              />
+              <Button
+                onClick={handleSaveWhatsApp}
+                disabled={updateSetting.isPending}
+                className="shrink-0"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {updateSetting.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
