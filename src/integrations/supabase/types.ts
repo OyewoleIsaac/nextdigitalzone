@@ -730,6 +730,24 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       submission_attachments: {
         Row: {
           created_at: string
@@ -781,24 +799,6 @@ export type Database = {
           id?: string
           ip_address?: string
           window_start?: string | null
-        }
-        Relationships: []
-      }
-      site_settings: {
-        Row: {
-          key: string
-          value: string
-          updated_at: string
-        }
-        Insert: {
-          key: string
-          value: string
-          updated_at?: string
-        }
-        Update: {
-          key?: string
-          value?: string
-          updated_at?: string
         }
         Relationships: []
       }
